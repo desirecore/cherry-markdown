@@ -497,7 +497,8 @@ const basicConfig = {
     id: 'cherry-text',
     name: 'cherry-text',
     autoSave2Textarea: false,
-    defaultModel: 'edit&preview',
+    // defaultModel defaults to 'wysiwyg', override here if needed
+    // defaultModel: 'edit&preview',
     showFullWidthMark: true, // 是否高亮全角符号 ·|￥|、|：|“|”|【|】|（|）|《|》
     showSuggestList: true, // 是否显示联想框
     maxUrlLength: 200, // url最大长度，超过则自动截断
