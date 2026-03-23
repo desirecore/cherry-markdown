@@ -6,7 +6,7 @@
   "description": "A powerful Markdown editor with WYSIWYG support, based on cherry-markdown",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/desirecore/cherry-markdown.git",
+    "url": "git+https://github.com/desirecore/super-doc.git",
     "directory": "packages/cherry-markdown"
   },
   "main": "./dist/super-doc.js",
