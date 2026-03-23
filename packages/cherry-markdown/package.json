@@ -1,24 +1,26 @@
 {
-  "name": "cherry-markdown",
+  "name": "@desirecore/super-doc",
   "license": "Apache-2.0",
-  "version": "0.11.0-alpha-5",
+  "version": "0.1.0",
   "type": "module",
-  "description": "a new markdown editor",
+  "description": "A powerful Markdown editor with WYSIWYG support, based on cherry-markdown",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Tencent/cherry-markdown.git",
+    "url": "git+https://github.com/desirecore/cherry-markdown.git",
     "directory": "packages/cherry-markdown"
   },
-  "main": "./dist/cherry-markdown.js",
-  "module": "./dist/cherry-markdown.esm.js",
-  "style": "./dist/cherry-markdown.min.css",
+  "main": "./dist/super-doc.js",
+  "module": "./dist/super-doc.esm.js",
+  "style": "./dist/super-doc.min.css",
   "types": "./dist/types/index.d.ts",
   "directories": {
     "example": "examples"
   },
   "files": [
     "dist",
-    "types"
+    "types",
+    "LICENSE",
+    "NOTICE"
   ],
   "sideEffects": [
     "./dist/*.css"
@@ -44,9 +46,12 @@
     "examples": "serve -p 3000 ."
   },
   "keywords": [
-    "markdown"
+    "markdown",
+    "editor",
+    "wysiwyg",
+    "super-doc"
   ],
-  "author": "Cherry Oteam",
+  "author": "desirecore",
   "devDependencies": {
     "@babel/core": "^7.7.2",
     "@babel/node": "^7.12.10",

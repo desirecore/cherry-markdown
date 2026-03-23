@@ -36,7 +36,7 @@ export default {
     {
       ...baseConfig.output,
       exports: 'named',
-      file: 'dist/cherry-markdown.js',
+      file: 'dist/super-doc.js',
       format: 'umd',
       name: 'Cherry',
       sourcemap: true,
@@ -45,7 +45,7 @@ export default {
     },
     {
       exports: 'named',
-      file: 'dist/cherry-markdown.esm.js',
+      file: 'dist/super-doc.esm.js',
       format: 'esm',
       name: 'Cherry',
       sourcemap: false,

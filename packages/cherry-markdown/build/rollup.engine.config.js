@@ -34,7 +34,7 @@ const terserPlugin = (options = {}) =>
 const umdOutputConfig = {
   ...baseConfig.output,
   exports: 'named',
-  file: isCoreBuild ? 'dist/cherry-markdown.engine.core.js' : 'dist/cherry-markdown.engine.js',
+  file: isCoreBuild ? 'dist/super-doc.engine.core.js' : 'dist/super-doc.engine.js',
   format: 'umd',
   name: 'CherryEngine',
   sourcemap: false,
@@ -45,7 +45,7 @@ const umdOutputConfig = {
 
 const esmOutputConfig = {
   exports: 'named',
-  file: isCoreBuild ? 'dist/cherry-markdown.engine.core.esm.js' : 'dist/cherry-markdown.engine.esm.js',
+  file: isCoreBuild ? 'dist/super-doc.engine.core.esm.js' : 'dist/super-doc.engine.esm.js',
   format: 'esm',
   name: 'CherryEngine',
   sourcemap: false,

@@ -31,7 +31,7 @@ const terserPlugin = (options = {}) =>
 const umdOutputConfig = {
   ...baseConfig.output,
   exports: 'named',
-  file: 'dist/cherry-markdown.stream.js',
+  file: 'dist/super-doc.stream.js',
   format: 'umd',
   name: 'Cherry',
   sourcemap: false,
@@ -47,7 +47,7 @@ const umdOutputConfig = {
 
 const esmOutputConfig = {
   exports: 'named',
-  file: 'dist/cherry-markdown.stream.esm.js',
+  file: 'dist/super-doc.stream.esm.js',
   format: 'esm',
   name: 'Cherry',
   sourcemap: false,

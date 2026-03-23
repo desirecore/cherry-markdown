@@ -1,0 +1,41 @@
+SuperDoc (@desirecore/super-doc)
+=================================
+
+This product is a derivative work of CherryMarkdown, originally developed
+by Tencent and licensed under the Apache License, Version 2.0.
+
+Original project: https://github.com/Tencent/cherry-markdown
+Original license: Apache License 2.0
+
+Reason for fork and rename
+--------------------------
+This fork introduces substantial changes to the original project, including
+a complete WYSIWYG editing mode (based on Milkdown/ProseMirror), custom
+syntax node plugins, image resize/alignment, interactive table of contents,
+and numerous other features. The scope of modifications diverges significantly
+from the upstream project. To avoid imposing maintenance burden on the
+upstream maintainers and to prevent confusion or compatibility issues for
+users of the original cherry-markdown package, this derivative work is
+published and maintained independently under a new name.
+
+This is NOT an official Tencent product. The names "Tencent" and
+"CherryMarkdown" are trademarks of their respective owners and are used
+here solely to describe the origin of this work, as permitted by
+Section 6 of the Apache License 2.0.
+
+Modifications
+--------------------------
+All files in the src/wysiwyg/ directory are new additions.
+All files in the src/addons/cherry-wysiwyg-milkdown-plugin.js,
+src/WysiwygEditor.js, src/toolbars/hooks/SwitchWysiwyg.js,
+src/toolbars/hooks/Footnote.js, and src/index.wysiwyg.js are new additions.
+Many existing files have been modified to support the WYSIWYG mode.
+For a complete list of changes, see the git history of this repository.
+
+Third-party components
+--------------------------
+This product includes third-party open source components listed in the
+LICENSE file. Each component is licensed under its own respective license.
+Additional dependencies introduced by this fork:
+  - @milkdown/crepe (MIT) - https://github.com/Milkdown/milkdown
+  - @milkdown/kit (MIT) - https://github.com/Milkdown/milkdown

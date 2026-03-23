@@ -19,7 +19,7 @@ const options = {
   ...baseConfig,
   output: {
     ...baseConfig.output,
-    file: 'dist/cherry-markdown.js',
+    file: 'dist/super-doc.js',
     format: 'umd',
     name: 'Cherry',
     sourcemap: true,

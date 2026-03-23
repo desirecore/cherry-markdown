@@ -36,7 +36,7 @@ const options = {
   output: {
     ...baseConfig.output,
     exports: 'named',
-    file: 'dist/cherry-markdown.core.js',
+    file: 'dist/super-doc.core.js',
     format: 'umd',
     name: 'Cherry',
     sourcemap: false,

@@ -76,13 +76,13 @@ const createStyleConfigs = ({ input, cssBaseName, outputBaseName, watch }) => {
 const options = [
   ...createStyleConfigs({
     input: 'src/sass/index.scss',
-    cssBaseName: 'cherry-markdown',
-    outputBaseName: 'cherry-markdown',
+    cssBaseName: 'super-doc',
+    outputBaseName: 'super-doc',
     watch: ['src/sass'],
   }),
   ...createStyleConfigs({
     input: 'src/sass/markdown_pure.scss',
-    cssBaseName: 'cherry-markdown.markdown',
+    cssBaseName: 'super-doc.markdown',
     outputBaseName: 'cherry-previewer',
   }),
 ];
