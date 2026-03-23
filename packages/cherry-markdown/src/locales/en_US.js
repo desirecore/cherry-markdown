@@ -14,6 +14,11 @@
  * limitations under the License.
  */
 export default {
+  tabStart: 'Home',
+  tabInsert: 'Insert',
+  tabDraw: 'Draw',
+  tabDesign: 'Design',
+  tabView: 'View',
   bold: 'Bold',
   code: 'Code',
   graph: 'Graph',

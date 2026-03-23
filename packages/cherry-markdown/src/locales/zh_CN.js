@@ -14,6 +14,11 @@
  * limitations under the License.
  */
 export default {
+  tabStart: '开始',
+  tabInsert: '插入',
+  tabDraw: '绘图',
+  tabDesign: '设计',
+  tabView: '视图',
   bold: '加粗', // 加粗
   code: '代码', // 代码
   graph: '画图', // 画图

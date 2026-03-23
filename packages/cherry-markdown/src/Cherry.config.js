@@ -688,6 +688,31 @@ const defaultConfig = {
       'shortcutKey',
       'togglePreview',
     ],
+    // Ribbon 风格标签页工具栏（类似 Word），设置后会替代上面的 toolbar 扁平配置
+    // 每个 tab 包含 name（对应 locale key）和 buttons（按钮数组，语法同 toolbar）
+    // 设置为 false 或空数组则使用上面的扁平 toolbar 配置
+    toolbarTabs: [
+      {
+        name: 'tabStart',
+        buttons: ['bold', 'italic', 'strikethrough', 'underline', '|', 'color', 'size', '|', 'header', '|', 'list', 'quote', '|', 'ruby', 'panel', 'detail'],
+      },
+      {
+        name: 'tabInsert',
+        buttons: ['image', 'audio', 'video', '|', 'link', 'hr', 'br', '|', 'code', 'formula', '|', 'toc', 'table', '|', 'footnote', 'pdf', 'word'],
+      },
+      {
+        name: 'tabDraw',
+        buttons: ['graph', 'drawIo'],
+      },
+      {
+        name: 'tabDesign',
+        buttons: ['shortcutKey'],
+      },
+      {
+        name: 'tabView',
+        buttons: ['togglePreview', 'switchWysiwyg', '|', 'export'],
+      },
+    ],
     toolbarRight: [],
     sidebar: false,
     bubble: ['bold', 'italic', 'underline', 'strikethrough', 'sub', 'sup', 'quote', '|', 'size', 'color'], // array or false

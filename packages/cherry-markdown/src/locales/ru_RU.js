@@ -14,6 +14,11 @@
  * limitations under the License.
  */
 export default {
+  tabStart: 'Главная',
+  tabInsert: 'Вставка',
+  tabDraw: 'Рисование',
+  tabDesign: 'Дизайн',
+  tabView: 'Вид',
   bold: 'Жирный',
   code: 'Код',
   graph: 'График',

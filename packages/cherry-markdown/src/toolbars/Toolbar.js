@@ -91,6 +91,15 @@ export default class Toolbar {
     Object.assign(this.options, options);
     this.$cherry = this.options.$cherry;
     this.instanceId = this.$cherry.instanceId;
+
+    // Ribbon tabs: flatten all tab buttons into buttonConfig for HookCenter registration
+    // Only for the main toolbar (not ToolbarRight subclass)
+    const tabs = this.$cherry.options.toolbars.toolbarTabs;
+    if (tabs && tabs.length > 0 && this.constructor === Toolbar) {
+      this.ribbonTabs = tabs;
+      this.options.buttonConfig = this.$flattenTabButtons(tabs);
+    }
+
     this.menus = new HookCenter(this);
     this.drawMenus();
     this.collectShortcutKey();
@@ -151,37 +160,22 @@ export default class Toolbar {
    * 根据配置画出来一级工具栏
    */
   drawMenus() {
+    if (this.ribbonTabs) {
+      this.$drawRibbonMenus();
+    } else {
+      this.$drawFlatMenus();
+    }
+  }
+
+  /**
+   * 扁平工具栏（原有逻辑）
+   */
+  $drawFlatMenus() {
     const fragLeft = document.createDocumentFragment();
 
     this.menus.level1MenusName.forEach((name) => {
       const btn = this.menus.hooks[name].createBtn();
-      if (typeof window === 'object' && 'onpointerup' in window) {
-        // 只有先down再up的才触发click逻辑，避免误触（尤其是float menu的场景）
-        btn.addEventListener(
-          'pointerdown',
-          () => {
-            this.isPointerDown = true;
-          },
-          false,
-        );
-        btn.addEventListener(
-          'pointerup',
-          (event) => {
-            this.isPointerDown && this.onClick(event, name);
-            this.isPointerDown = false;
-          },
-          false,
-        );
-      } else {
-        // vscode 插件里不支持 pointer event
-        btn.addEventListener(
-          'click',
-          (event) => {
-            this.onClick(event, name);
-          },
-          false,
-        );
-      }
+      this.$bindBtnEvent(btn, name);
       if (this.isHasSubMenu(name)) {
         btn.classList.add('cherry-toolbar-dropdown');
       }
@@ -190,6 +184,123 @@ export default class Toolbar {
     });
 
     this.appendMenusToDom(fragLeft);
+  }
+
+  /**
+   * Ribbon 标签页工具栏（Word 风格）
+   */
+  $drawRibbonMenus() {
+    this.options.dom.classList.add('cherry-toolbar--ribbon');
+
+    const ribbon = createElement('div', 'cherry-ribbon');
+    const tabHeaders = createElement('div', 'cherry-ribbon-tabs');
+    const tabPanelsContainer = createElement('div', 'cherry-ribbon-panels');
+
+    this.ribbonTabs.forEach((tab, index) => {
+      // Tab header
+      const header = createElement('div', `cherry-ribbon-tab${index === 0 ? ' cherry-ribbon-tab--active' : ''}`);
+      header.textContent = this.$cherry.locale[tab.name] || tab.name;
+      header.dataset.tabName = tab.name;
+      header.addEventListener('click', () => this.$switchRibbonTab(tab.name));
+      tabHeaders.appendChild(header);
+
+      // Tab panel
+      const panel = createElement('div', `cherry-ribbon-panel${index === 0 ? ' cherry-ribbon-panel--active' : ''}`);
+      panel.dataset.tabName = tab.name;
+
+      // Create buttons for this tab
+      tab.buttons.forEach((btnConfig) => {
+        if (btnConfig === '|') {
+          panel.appendChild(createElement('span', 'cherry-toolbar-button cherry-toolbar-split'));
+          return;
+        }
+
+        const name = typeof btnConfig === 'string' ? btnConfig : Object.keys(btnConfig)[0];
+        const hook = this.menus.hooks[name];
+        if (!hook) return;
+
+        const btn = hook.createBtn();
+        this.$bindBtnEvent(btn, name);
+        if (this.isHasSubMenu(name)) {
+          btn.classList.add('cherry-toolbar-dropdown');
+        }
+        panel.appendChild(btn);
+        hook.afterInit(btn);
+      });
+
+      tabPanelsContainer.appendChild(panel);
+    });
+
+    ribbon.appendChild(tabHeaders);
+    ribbon.appendChild(tabPanelsContainer);
+
+    const toolbarLeft = createElement('div', 'toolbar-left');
+    toolbarLeft.appendChild(ribbon);
+    this.options.dom.appendChild(toolbarLeft);
+  }
+
+  /**
+   * 为按钮绑定点击事件
+   */
+  $bindBtnEvent(btn, name) {
+    if (typeof window === 'object' && 'onpointerup' in window) {
+      btn.addEventListener(
+        'pointerdown',
+        () => {
+          this.isPointerDown = true;
+        },
+        false,
+      );
+      btn.addEventListener(
+        'pointerup',
+        (event) => {
+          this.isPointerDown && this.onClick(event, name);
+          this.isPointerDown = false;
+        },
+        false,
+      );
+    } else {
+      btn.addEventListener(
+        'click',
+        (event) => {
+          this.onClick(event, name);
+        },
+        false,
+      );
+    }
+  }
+
+  /**
+   * 切换 Ribbon 标签页
+   */
+  $switchRibbonTab(tabName) {
+    const container = this.options.dom;
+    container.querySelectorAll('.cherry-ribbon-tab').forEach((tab) => {
+      tab.classList.toggle('cherry-ribbon-tab--active', tab.dataset.tabName === tabName);
+    });
+    container.querySelectorAll('.cherry-ribbon-panel').forEach((panel) => {
+      panel.classList.toggle('cherry-ribbon-panel--active', panel.dataset.tabName === tabName);
+    });
+    this.hideAllSubMenu();
+  }
+
+  /**
+   * 将 toolbarTabs 配置扁平化为 buttonConfig 数组
+   */
+  $flattenTabButtons(tabs) {
+    const buttons = [];
+    const seen = new Set();
+    tabs.forEach((tab) => {
+      tab.buttons.forEach((btn) => {
+        if (btn === '|') return;
+        const name = typeof btn === 'string' ? btn : Object.keys(btn)[0];
+        if (!seen.has(name)) {
+          seen.add(name);
+          buttons.push(btn);
+        }
+      });
+    });
+    return buttons;
   }
 
   appendMenusToDom(menus) {
