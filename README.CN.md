@@ -1,59 +1,79 @@
-<p align="center"><img src="logo/new_logo.png" alt="cherry logo" width="50%"/></p>
+<p align="center"><img src="logo/new_logo.png" alt="super-doc logo" width="50%"/></p>
 
-# Cherry Markdown Writer
-
-[![cnb 云原生开发](./logo/cnb-badge.svg)](https://cnb.cool/tencent/cherry-markdown/cherry-markdown) [![Cloud Studio Template](https://cs-res.codehub.cn/common/assets/icon-badge.svg)](https://cloudstudio.net#https://github.com/Tencent/cherry-markdown)
+# SuperDoc
 
 简体中文 | [English](./README.md)
 
+## 关于本项目
+
+SuperDoc (`@desirecore/super-doc`) 是 [Tencent/cherry-markdown](https://github.com/Tencent/cherry-markdown) 的独立维护分支。
+
+### 为什么独立维护？
+
+本项目源自我们在实际业务中对 cherry-markdown 的深度定制。我们曾尝试将修改合并回上游，但由于改动范围过大——特别是新增了基于 Milkdown/ProseMirror 的完整 WYSIWYG 编辑模式、流式渲染引擎，以及大量自定义 ProseMirror 节点——与上游的架构和设计方向产生了显著差异。
+
+为了不给上游维护者带来不合理的代码审查和维护负担，同时避免对现有 cherry-markdown 使用者引入潜在的兼容性问题，我们选择以独立包的形式发布和维护。
+
+**我们希望明确以下几点：**
+
+- [cherry-markdown](https://github.com/Tencent/cherry-markdown) 是由腾讯 Cherry Oteam 打造的优秀 Markdown 编辑器，我们对原作者和所有贡献者的工作深表敬意。
+- 本项目采用与原项目相同的 Apache License 2.0 协议。上游的 LICENSE 文件（包含所有第三方组件声明）已完整保留并随本包一同分发。
+- 我们不以 "Tencent" 或 "CherryMarkdown" 的名义进行任何品牌背书。SuperDoc 是独立的衍生作品。
+- 我们建议评估 Markdown 编辑器的开发者也了解原版 [cherry-markdown](https://github.com/Tencent/cherry-markdown)，该项目仍在积极维护中。
+
+---
+
+## SuperDoc 新增内容
+
+完整变更日志请参见 [wiki](https://github.com/desirecore/super-doc/wiki/SuperDoc-%E6%96%B0%E5%A2%9E%E7%89%B9%E6%80%A7%E4%B8%8E%E4%BF%AE%E6%94%B9%E8%AF%B4%E6%98%8E)。
+
+### WYSIWYG 所见即所得编辑模式
+
+基于 [Milkdown](https://milkdown.dev/) / ProseMirror 构建的完整富文本编辑器，支持工具栏一键切换 Markdown 源码编辑与富文本编辑。包含图片拖拽缩放与对齐、可编辑 TOC 目录、脚注、draw.io 流程图、音视频嵌入、Panel 面板、Ruby 注音、可折叠 Detail 等自定义节点。
+
+### Stream 流式渲染模式
+
+专为 AI 聊天场景设计的轻量级 Engine + Previewer 组合，构建产物为 `super-doc.stream.js`，不含编辑器 UI 和工具栏，对逐字流式输出做了专项优化——代码块、行内公式、表格等结构会自动闭合。
+
+### 其他增强
+
+- 富文本标记：字体颜色、背景色、字号、高亮、下划线、上下标
+- 新增 11 个工具栏按钮（脚注、draw.io、音频、文件、图表、颜色、字号、Ruby、Panel、Detail、PDF 导出）
+- 修复 30+ 个 bug（KaTeX 渲染、表格编辑、超链接、粘贴处理、公式渲染等）
+
+---
+
 ## 介绍
 
-Cherry Markdown Writer 是一款 Javascript Markdown 编辑器，具有开箱即用、轻量简洁、易于扩展等特点。它可以运行在浏览器或服务端（NodeJs）。
+SuperDoc 是一款 Javascript Markdown 编辑器，具有开箱即用、轻量简洁、易于扩展等特点。它可以运行在浏览器或服务端（NodeJs）。
 
 ### 文档
 
-- [初识 cherry-markdown 编辑器](https://github.com/Tencent/cherry-markdown/wiki/%E5%88%9D%E8%AF%86cherry-markdown-%E7%BC%96%E8%BE%91%E5%99%A8)
-- [hello world](https://github.com/Tencent/cherry-markdown/wiki/hello-world)
-- [配置图片&文件上传接口](https://github.com/Tencent/cherry-markdown/wiki/%E9%85%8D%E7%BD%AE%E5%9B%BE%E7%89%87&%E6%96%87%E4%BB%B6%E4%B8%8A%E4%BC%A0%E6%8E%A5%E5%8F%A3)
-- [调整工具栏](https://github.com/Tencent/cherry-markdown/wiki/%E8%B0%83%E6%95%B4%E5%B7%A5%E5%85%B7%E6%A0%8F)
-- [配置项全解](https://github.com/Tencent/cherry-markdown/wiki/%E9%85%8D%E7%BD%AE%E9%A1%B9%E5%85%A8%E8%A7%A3)
-- [自定义语法](https://github.com/Tencent/cherry-markdown/wiki/%E8%87%AA%E5%AE%9A%E4%B9%89%E8%AF%AD%E6%B3%95)
-- [配置主题](https://github.com/Tencent/cherry-markdown/wiki/%E9%85%8D%E7%BD%AE%E4%B8%BB%E9%A2%98)
-- [扩展代码块语法](https://github.com/Tencent/cherry-markdown/wiki/%E6%89%A9%E5%B1%95%E4%BB%A3%E7%A0%81%E5%9D%97%E8%AF%AD%E6%B3%95)
-- [事件 & 回调](https://github.com/Tencent/cherry-markdown/wiki/%E4%BA%8B%E4%BB%B6&%E5%9B%9E%E8%B0%83)
-- [API](https://tencent.github.io/cherry-markdown/examples/api.html)
-
-### 演示
-
-- [完整版](https://tencent.github.io/cherry-markdown/examples/index.html)
-- [基础](https://tencent.github.io/cherry-markdown/examples/basic.html)
-- [移动端](https://tencent.github.io/cherry-markdown/examples/h5.html)
-- [多实例](https://tencent.github.io/cherry-markdown/examples/multiple.html)
-- [无工具栏](https://tencent.github.io/cherry-markdown/examples/notoolbar.html)
-- [纯预览模式](https://tencent.github.io/cherry-markdown/examples/preview_only.html)
-- [XSS 测试](https://tencent.github.io/cherry-markdown/examples/xss.html)（默认禁用，需配置后允许）
-- [IMG WYSIWYG](https://tencent.github.io/cherry-markdown/examples/img.html)
-- [表格编辑](https://tencent.github.io/cherry-markdown/examples/table.html)
-- [自动编号标题](https://tencent.github.io/cherry-markdown/examples/head_num.html)
-- [流式输入模式（AI chat 场景）](https://tencent.github.io/cherry-markdown/examples/ai_chat.html)
-- [流式输入模式 - 可选插件懒加载](https://tencent.github.io/cherry-markdown/examples/ai_chat_stream.html)
-- [VIM 编辑模式](https://tencent.github.io/cherry-markdown/examples/vim.html)
-- [使用自带或自定义的 Mermaid.js](https://tencent.github.io/cherry-markdown/examples/mermaid.html)
-- [自定义代码块外层容器](https://tencent.github.io/cherry-markdown/examples/custom_codeblock_wrapper.html)
+- [初识编辑器](https://github.com/desirecore/super-doc/wiki/%E5%88%9D%E8%AF%86-cherry-markdown-%E7%BC%96%E8%BE%91%E5%99%A8)
+- [Hello World](https://github.com/desirecore/super-doc/wiki/hello-world)
+- [配置图片 & 文件上传接口](https://github.com/desirecore/super-doc/wiki/%E9%85%8D%E7%BD%AE%E5%9B%BE%E7%89%87&%E6%96%87%E4%BB%B6%E4%B8%8A%E4%BC%A0%E6%8E%A5%E5%8F%A3)
+- [调整工具栏](https://github.com/desirecore/super-doc/wiki/%E8%B0%83%E6%95%B4%E5%B7%A5%E5%85%B7%E6%A0%8F)
+- [配置项全解](https://github.com/desirecore/super-doc/wiki/%E9%85%8D%E7%BD%AE%E9%A1%B9%E5%85%A8%E8%A7%A3)
+- [自定义语法](https://github.com/desirecore/super-doc/wiki/%E8%87%AA%E5%AE%9A%E4%B9%89%E8%AF%AD%E6%B3%95)
+- [配置主题](https://github.com/desirecore/super-doc/wiki/%E9%85%8D%E7%BD%AE%E4%B8%BB%E9%A2%98)
+- [扩展代码块语法](https://github.com/desirecore/super-doc/wiki/%E6%89%A9%E5%B1%95%E4%BB%A3%E7%A0%81%E5%9D%97%E8%AF%AD%E6%B3%95)
+- [事件 & 回调](https://github.com/desirecore/super-doc/wiki/%E4%BA%8B%E4%BB%B6&%E5%9B%9E%E8%B0%83)
+- [WYSIWYG 编辑模式](https://github.com/desirecore/super-doc/wiki/WYSIWYG-%E6%89%80%E8%A7%81%E5%8D%B3%E6%89%80%E5%BE%97%E7%BC%96%E8%BE%91%E6%A8%A1%E5%BC%8F)
+- [Stream 流式渲染](https://github.com/desirecore/super-doc/wiki/Stream-%E6%B5%81%E5%BC%8F%E6%B8%B2%E6%9F%93%E6%A8%A1%E5%BC%8F)
 
 -----
 
 ### 开箱即用
 
-开发者可以用非常简单的方式调用并实例化 Cherry Markdown 编辑器，实例化的编辑器默认支持绝大多数常用的 markdown 语法（例如标题、目录、流程图、公式等）。
+开发者可以用非常简单的方式调用并实例化 SuperDoc 编辑器，实例化的编辑器默认支持绝大多数常用的 markdown 语法（例如标题、目录、流程图、公式等）。
 
 ### 易于扩展
 
-当 Cherry Markdown 编辑器默认支持的语法无法满足需求时，可以进行二次开发或功能扩展。Cherry 基于纯 JavaScript 实现，不依赖 Angular、Vue、React 等框架（框架仅作为容器环境）。
+当 SuperDoc 默认支持的语法无法满足需求时，可以进行二次开发或功能扩展。SuperDoc 基于纯 JavaScript 实现，不依赖 Angular、Vue、React 等框架（框架仅作为容器环境）。
 
 ### 流式渲染
 
-开启流式渲染后，cherry会对以下语法进行**自动补全**，避免出现Markdown源码，以达到在流式输出过程中稳定输出的效果（[demo](https://tencent.github.io/cherry-markdown/examples/ai_chat.html)）：
+开启流式渲染后，SuperDoc 会对以下语法进行**自动补全**，避免出现 Markdown 源码，以达到在流式输出过程中稳定输出的效果：
 
 - 标题
 - 加粗、斜体
@@ -65,7 +85,7 @@ Cherry Markdown Writer 是一款 Javascript Markdown 编辑器，具有开箱即
 - 段落公式
 - 无序列表
 - 表格
-- mermaid画图
+- mermaid 图表
 - 脚注
 
 ## 功能
@@ -97,7 +117,8 @@ Cherry Markdown Writer 是一款 Javascript Markdown 编辑器，具有开箱即
 12. 悬浮目录
 13. 主题切换
 14. 输入联想
-15. AI Chat场景流式输出场景特别支持
+15. AI Chat 场景流式输出支持
+16. **WYSIWYG 模式：一键切换 Markdown 与富文本编辑** *(SuperDoc 新增)*
 
 ### 性能特性
 
@@ -106,33 +127,27 @@ Cherry Markdown Writer 是一款 Javascript Markdown 编辑器，具有开箱即
 
 ### 安全
 
-Cherry Markdown 内置安全钩子，通过白名单过滤和 DomPurify 进行扫描过滤。
+SuperDoc 内置安全钩子，通过白名单过滤和 DomPurify 进行扫描过滤。
 
 ### 样式主题
 
 提供多种主题样式可选。
-
-### 功能示例
-
-点击查看功能演示 [Features demo](https://github.com/Tencent/cherry-markdown/wiki/%E7%89%B9%E6%80%A7%E5%B1%95%E7%A4%BA-features)
 
 ## 安装
 
 通过 yarn
 
 ```bash
-yarn add cherry-markdown
+yarn add @desirecore/super-doc
 ```
 
 通过 npm
 
 ```bash
-npm install cherry-markdown --save
+npm install @desirecore/super-doc --save
 ```
 
 如果需要启用 mermaid 绘图和表格转图表功能，需要同时安装 `mermaid` 与 `echarts`。
-
-Cherry Markdown 内置了 mermaid，如果希望使用指定版本的 mermaid，可以参考 [wiki](https://github.com/Tencent/cherry-markdown/wiki/%E6%9E%84%E5%BB%BA%E4%BA%A7%E7%89%A9%E4%BB%8B%E7%BB%8D)
 
 ## 快速开始
 
@@ -141,13 +156,13 @@ Cherry Markdown 内置了 mermaid，如果希望使用指定版本的 mermaid，
 #### UMD
 
 ```html
-<link href="cherry-editor.min.css" />
+<link href="super-doc.min.css" />
 <div id="markdown-container"></div>
-<script src="cherry-editor.min.js"></script>
+<script src="super-doc.js"></script>
 <script>
   new Cherry({
     id: 'markdown-container',
-    value: '# welcome to cherry editor!',
+    value: '# welcome to SuperDoc!',
   });
 </script>
 ```
@@ -155,47 +170,46 @@ Cherry Markdown 内置了 mermaid，如果希望使用指定版本的 mermaid，
 #### ESM
 
 ```javascript
-import 'cherry-markdown/dist/cherry-markdown.css';
-import Cherry from 'cherry-markdown';
+import '@desirecore/super-doc/dist/super-doc.css';
+import Cherry from '@desirecore/super-doc';
 const cherryInstance = new Cherry({
   id: 'markdown-container',
-  value: '# welcome to cherry editor!',
+  value: '# welcome to SuperDoc!',
 });
 ```
 
 ### Node
 
 ```javascript
-const { default: CherryEngine } = require('cherry-markdown/dist/cherry-markdown.engine.core.common');
+const { default: CherryEngine } = require('@desirecore/super-doc/dist/super-doc.engine.core.common');
 const cherryEngineInstance = new CherryEngine();
-const htmlContent = cherryEngineInstance.makeHtml('# welcome to cherry editor!');
+const htmlContent = cherryEngineInstance.makeHtml('# welcome to SuperDoc!');
 ```
 
 ## 轻量版本
 
-由于 mermaid 库体积较大，cherry 提供了不内置 mermaid 的核心构建包，可按需引入。
+由于 mermaid 库体积较大，SuperDoc 提供了不内置 mermaid 的核心构建包，可按需引入。
 
-### 完整模式 (图形界面)
+### 完整模式（图形界面）
 
 ```javascript
-import 'cherry-markdown/dist/cherry-markdown.css';
-import Cherry from 'cherry-markdown/dist/cherry-markdown.core';
+import '@desirecore/super-doc/dist/super-doc.css';
+import Cherry from '@desirecore/super-doc/dist/super-doc.core';
 const cherryInstance = new Cherry({
   id: 'markdown-container',
-  value: '# welcome to cherry editor!',
+  value: '# welcome to SuperDoc!',
 });
 ```
 
 ### 引擎模式（语法编译）
 
 ```javascript
-// 导入 Cherry 引擎核心构建包
-// 引擎的配置项与 Cherry 相同，以下内容仅介绍 Cherry 核心包的用法
-import CherryEngine from 'cherry-markdown/dist/cherry-markdown.engine.core';
+// 导入 SuperDoc 引擎核心构建包
+import CherryEngine from '@desirecore/super-doc/dist/super-doc.engine.core';
 const cherryEngineInstance = new CherryEngine();
-const htmlContent = cherryEngineInstance.makeHtml('# welcome to cherry editor!');
+const htmlContent = cherryEngineInstance.makeHtml('# welcome to SuperDoc!');
 
-// --> <h1>welcome to cherry editor!</h1>
+// --> <h1>welcome to SuperDoc!</h1>
 ```
 
 ### 关于 mermaid ⚠️
@@ -203,96 +217,44 @@ const htmlContent = cherryEngineInstance.makeHtml('# welcome to cherry editor!')
 核心构建包不包含 mermaid 依赖，需要手动引入相关插件。
 
 ```javascript
-import 'cherry-markdown/dist/cherry-markdown.css';
-import Cherry from 'cherry-markdown/dist/cherry-markdown.core';
-import CherryMermaidPlugin from 'cherry-markdown/dist/addons/cherry-code-block-mermaid-plugin';
+import '@desirecore/super-doc/dist/super-doc.css';
+import Cherry from '@desirecore/super-doc/dist/super-doc.core';
+import CherryMermaidPlugin from '@desirecore/super-doc/dist/addons/cherry-code-block-mermaid-plugin';
 import mermaid from 'mermaid';
 
 // 插件注册必须在 Cherry 实例化之前完成
 Cherry.usePlugin(CherryMermaidPlugin, {
   mermaid, // 传入 mermaid 对象
-  // mermaidAPI: mermaid.mermaidAPI, // 也可以传入 mermaid API
-  // 同时可以在这里配置 mermaid 的行为，参考 mermaid 官方文档
-  // theme: 'neutral',
-  // sequence: { useMaxWidth: false, showSequenceNumbers: true }
 });
 
 const cherryInstance = new Cherry({
   id: 'markdown-container',
-  value: '# welcome to cherry editor!',
+  value: '# welcome to SuperDoc!',
 });
 ```
-
-从 mermaid v10.0.0 开始，渲染逻辑由同步改为异步，`afterChange` 或 `afterInit` 事件后，mermaid 代码块先渲染为占位符，再异步渲染替换。
-
-如果需要在异步渲染完成后获取渲染结果，可以参考如下示例：
-
-````javascript
-const cherryInstance = new Cherry({
-  id: 'markdown-container',
-  // 使用模板字符串，内部直接包含 mermaid 的代码块
-  value: `
-    ```mermaid
-    graph LR
-        A[公司] -->| 下 班 | B(菜市场)
-        B --> C{看见<br>卖西瓜的}
-        C -->|Yes| D[买一个包子]
-        C -->|No| E[买一斤包子]
-    ```
-  `,
-  callback: {
-    afterAsyncRender: (md, html) => {
-      // md 是 markdown 源码，html 是渲染结果
-    }
-  }
-});
-````
 
 ### 流式输出包（Stream Build）
 
-Cherry 提供了专为流式输出场景优化的构建包，该包不包含 mermaid、CodeMirror 等大型依赖，可实现按需懒加载，非常适合 AI Chat 等场景。
+SuperDoc 提供了专为流式输出场景优化的构建包，该包不包含 mermaid、CodeMirror 等大型依赖，可实现按需懒加载，非常适合 AI Chat 等场景。
 
 ```javascript
-import 'cherry-markdown/dist/cherry-markdown.css';
-import Cherry from 'cherry-markdown/dist/cherry-markdown.stream';
-
-// 流式输出包默认不包含以下依赖，可按需加载：
-// - mermaid（流程图）
-// - CodeMirror（代码编辑器）
+import '@desirecore/super-doc/dist/super-doc.css';
+import Cherry from '@desirecore/super-doc/dist/super-doc.stream';
 
 const cherryInstance = new Cherry({
   id: 'markdown-container',
 });
 
-cherryInstance.setMarkdown('# welcome to cherry editor!');
-```
-
-#### 为流式输出包加载 Mermaid 插件
-
-```javascript
-import 'cherry-markdown/dist/cherry-markdown.css';
-import Cherry from 'cherry-markdown/dist/cherry-markdown.stream';
-import CherryMermaidPlugin from 'cherry-markdown/dist/addons/cherry-code-block-mermaid-plugin';
-import mermaid from 'mermaid';
-
-// 插件注册必须在 Cherry 实例化之前完成
-Cherry.usePlugin(CherryMermaidPlugin, {
-  mermaid,
-  mermaidAPI: mermaid,
-});
-
-const cherryInstance = new Cherry({
-  id: 'markdown-container',
-});
+cherryInstance.setMarkdown('# welcome to SuperDoc!');
 ```
 
 #### 流式输出包与核心包的区别
 
-| 构建包     | 文件                        | 包含 Mermaid | 包含 CodeMirror | 适用场景         |
-| ---------- | --------------------------- | ------------ | --------------- | ---------------- |
-| 完整包     | `cherry-markdown.js`        | ✅            | ✅               | 通用场景         |
-| 核心包     | `cherry-markdown.core.js`   | ❌            | ✅               | 不需要 Mermaid   |
-| 流式输出包 | `cherry-markdown.stream.js` | ❌            | ❌               | AI Chat 流式输出 |
+| 构建包     | 文件                  | 包含 Mermaid | 包含 CodeMirror | 适用场景         |
+| ---------- | --------------------- | ------------ | --------------- | ---------------- |
+| 完整包     | `super-doc.js`        | ✅            | ✅               | 通用场景         |
+| 核心包     | `super-doc.core.js`   | ❌            | ✅               | 不需要 Mermaid   |
+| 流式输出包 | `super-doc.stream.js` | ❌            | ❌               | AI Chat 流式输出 |
 
 > 注意：MathJax/KaTeX 为外部依赖，通过 CDN 动态加载，不包含在任何构建包中。
 
@@ -301,35 +263,34 @@ const cherryInstance = new Cherry({
 强烈推荐使用动态引入（Dynamic import），下面给出 webpack 动态引入的示例。
 
 ```javascript
-import 'cherry-markdown/dist/cherry-markdown.css';
-import Cherry from 'cherry-markdown/dist/cherry-markdown.core';
+import '@desirecore/super-doc/dist/super-doc.css';
+import Cherry from '@desirecore/super-doc/dist/super-doc.core';
 
 const registerPlugin = async () => {
   const [{ default: CherryMermaidPlugin }, mermaid] = await Promise.all([
-    import('cherry-markdown/src/addons/cherry-code-block-mermaid-plugin'),
+    import('@desirecore/super-doc/src/addons/cherry-code-block-mermaid-plugin'),
     import('mermaid'),
   ]);
   Cherry.usePlugin(CherryMermaidPlugin, {
-    mermaid, // 传入mermaid引用
+    mermaid,
   });
 };
 
 registerPlugin().then(() => {
-  // 插件注册必须在 Cherry 实例化之前完成
   const cherryInstance = new Cherry({
     id: 'markdown-container',
-    value: '# welcome to cherry editor!',
+    value: '# welcome to SuperDoc!',
   });
 });
 ```
 
 ## 配置
 
-所有配置项基本都在 `/src/Cherry.config.js` 中进行了标注，详见：[配置项全解](https://github.com/Tencent/cherry-markdown/wiki/%E9%85%8D%E7%BD%AE%E9%A1%B9%E5%85%A8%E8%A7%A3)
+所有配置项基本都在 `/src/Cherry.config.js` 中进行了标注，详见：[配置项全解](https://github.com/desirecore/super-doc/wiki/%E9%85%8D%E7%BD%AE%E9%A1%B9%E5%85%A8%E8%A7%A3)
 
 ## 示例
 
-点击查看 [Wiki 示例](https://github.com/Tencent/cherry-markdown/wiki)
+点击查看 [Wiki 文档](https://github.com/desirecore/super-doc/wiki)
 
 ### 客户端
 
@@ -339,27 +300,22 @@ registerPlugin().then(() => {
 
 ### 自定义语法
 
-详见 [自定义语法文档](https://github.com/Tencent/cherry-markdown/wiki/%E8%87%AA%E5%AE%9A%E4%B9%89%E8%AF%AD%E6%B3%95)
+详见 [自定义语法文档](https://github.com/desirecore/super-doc/wiki/%E8%87%AA%E5%AE%9A%E4%B9%89%E8%AF%AD%E6%B3%95)
 
 ### 自定义工具栏
 
-cherry 支持五种工具栏位置，每个位置都可以扩展自定义工具按钮，详情见： [自定义工具栏按钮](https://github.com/Tencent/cherry-markdown/wiki/%E8%B0%83%E6%95%B4%E5%B7%A5%E5%85%B7%E6%A0%8F#%E8%87%AA%E5%AE%9A%E4%B9%89%E5%B7%A5%E5%85%B7%E6%A0%8F%E6%8C%89%E9%92%AE)。
+SuperDoc 支持五种工具栏位置，每个位置都可以扩展自定义工具按钮，详情见：[自定义工具栏按钮](https://github.com/desirecore/super-doc/wiki/%E8%B0%83%E6%95%B4%E5%B7%A5%E5%85%B7%E6%A0%8F#%E8%87%AA%E5%AE%9A%E4%B9%89%E5%B7%A5%E5%85%B7%E6%A0%8F%E6%8C%89%E9%92%AE)。
 
 ## 单元测试
 
-已经添加了基础的 `Vitest` 配置,但是相关测试用例还未完善，欢迎大家提交提供丰富的测试用例。
+已经添加了基础的 `Vitest` 配置及测试用例，欢迎提交更丰富的测试。
 
-## 贡献指南
+## 致谢
 
-欢迎加入我们，一起打造强大的 Markdown 编辑器。在实现新功能或提交特性前，请先阅读：
-
-- [初识 cherry markdown 编辑器](https://github.com/Tencent/cherry-markdown/wiki/%E5%88%9D%E8%AF%86-cherry-markdown-%E7%BC%96%E8%BE%91%E5%99%A8)
-- [贡献指南](https://github.com/Tencent/cherry-markdown/wiki/%E8%B4%A1%E7%8C%AE%E6%8C%87%E5%8D%97%20Contribution%20Guidelines)
-
-<a href="https://openomy.com/Tencent/cherry-markdown" target="_blank" style="display: block; width: 100%;" align="center">
-  <img src="https://openomy.com/svg?repo=Tencent/cherry-markdown&chart=bubble&latestMonth=3" target="_blank" alt="Contribution Leaderboard" style="display: block; width: 100%;" />
-</a>
+本项目是 [cherry-markdown](https://github.com/Tencent/cherry-markdown) 的衍生作品，原项目由腾讯 Cherry Oteam 开发并以 Apache License 2.0 发布。感谢原作者和所有贡献者打造了如此优秀的基础。
 
 ## License
 
 [Apache-2.0](./LICENSE)
+
+本产品包含来自 Tencent/cherry-markdown 的软件。第三方组件声明详见 [LICENSE](./LICENSE) 文件。
