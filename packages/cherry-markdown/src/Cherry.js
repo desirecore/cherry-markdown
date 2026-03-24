@@ -77,6 +77,12 @@ export default class Cherry extends CherryStatic {
      */
     this.options = mergeWith({}, defaultConfigCopy, options, customizer);
 
+    // 如果用户明确提供了 toolbar 但没有提供 toolbarTabs，则禁用 ribbon 模式
+    // 避免升级后默认 toolbarTabs 覆盖用户的自定义 toolbar 配置
+    if (options?.toolbars?.toolbar && !options?.toolbars?.toolbarTabs) {
+      this.options.toolbars.toolbarTabs = false;
+    }
+
     /** @type {import('./utils/cm-search-replace').default} SearchBox 实例 */
     this.searchBoxInstance = null;
     /** @type {boolean} 是否初始化SearchBox */
