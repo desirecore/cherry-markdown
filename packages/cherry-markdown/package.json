@@ -123,7 +123,8 @@
     "dompurify": "^3.2.6",
     "htmlparser2": "^10.0.0",
     "jsdom": "~19.0.0",
-    "ws": "^8.18.0"
+    "ws": "^8.18.0",
+    "@turbodocx/html-to-docx": "^1.20.1"
   },
   "resolutions": {
     "glob-parent": "5.1.2",

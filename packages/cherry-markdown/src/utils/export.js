@@ -225,3 +225,6 @@ export function exportHTMLFile(HTMLText, fileName) {
 
 // Word 导出功能
 export { exportWordFile } from './exportWord';
+
+// DOCX 文件导出功能
+export { exportDocxFile } from './exportDocx';
