@@ -71,32 +71,44 @@ const fileDownload = (downloadUrl, fileName) => {
 };
 
 /**
- * 利用window.print导出成PDF
+ * 导出成PDF。
+ * 优先使用 options.pdfExporter（如 Electron 的 printToPDF），否则回退到 window.print()。
  * @param {HTMLElement} previewDom 预览区域的dom
  * @param {String} fileName 导出PDF文件名
+ * @param {Object} [options]
+ * @param {(() => Promise<Uint8Array>) | null} [options.pdfExporter] 自定义PDF导出函数
  */
-export function exportPDF(previewDom, fileName) {
+export async function exportPDF(previewDom, fileName, options = {}) {
   const oldTitle = document.title;
   document.title = fileName;
 
-  getReadyToExport(previewDom, (/** @type {HTMLElement}*/ cherryPreviewer, /** @type {function}*/ thenFinish) => {
-    // 开启导出专用样式开关，仅在导出流程中生效，避免常规打印误隐藏整页
-    const htmlEl = document.documentElement;
-    const hadExportOnly = htmlEl.classList.contains('cherry-export-only');
-    if (!hadExportOnly) htmlEl.classList.add('cherry-export-only');
-    // 强制展开所有代码块
-    cherryPreviewer.innerHTML = cherryPreviewer.innerHTML.replace(
-      /class="cherry-code-unExpand("| )/g,
-      'class="cherry-code-expand$1',
-    );
-    try {
-      window.print();
-    } finally {
-      thenFinish();
-      // 还原打印专用样式开关
-      if (!hadExportOnly) htmlEl.classList.remove('cherry-export-only');
-      document.title = oldTitle;
-    }
+  return new Promise((resolve, reject) => {
+    getReadyToExport(previewDom, async (/** @type {HTMLElement}*/ cherryPreviewer, /** @type {function}*/ thenFinish) => {
+      const htmlEl = document.documentElement;
+      const hadExportOnly = htmlEl.classList.contains('cherry-export-only');
+      if (!hadExportOnly) htmlEl.classList.add('cherry-export-only');
+      // 强制展开所有代码块
+      cherryPreviewer.innerHTML = cherryPreviewer.innerHTML.replace(
+        /class="cherry-code-unExpand("| )/g,
+        'class="cherry-code-expand$1',
+      );
+      try {
+        if (typeof options.pdfExporter === 'function') {
+          const pdfBuffer = await options.pdfExporter();
+          const blob = new Blob([pdfBuffer], { type: 'application/pdf' });
+          fileDownload(URL.createObjectURL(blob), `${fileName}.pdf`);
+        } else {
+          window.print();
+        }
+        resolve();
+      } catch (err) {
+        reject(err);
+      } finally {
+        thenFinish();
+        if (!hadExportOnly) htmlEl.classList.remove('cherry-export-only');
+        document.title = oldTitle;
+      }
+    });
   });
 }
 

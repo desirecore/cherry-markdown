@@ -1160,8 +1160,8 @@ export default class Cherry extends CherryStatic {
    * 'pdf'：导出成pdf文件; 'img'：导出成png图片; 'markdown'：导出成markdown文件; 'html'：导出成html文件;
    * @param {string} [fileName] 导出文件名(默认为当前第一行内容|'cherry-export')
    */
-  export(type = 'pdf', fileName = '') {
-    this.previewer.export(type, fileName);
+  async export(type = 'pdf', fileName = '') {
+    return await this.previewer.export(type, fileName);
   }
 
   /**

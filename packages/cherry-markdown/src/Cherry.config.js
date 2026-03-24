@@ -848,6 +848,14 @@ const defaultConfig = {
     changeMainTheme: (theme) => {},
     changeCodeBlockTheme: (theme) => {},
   },
+  export: {
+    /** 自定义 PDF 导出函数，提供后将替代默认的 window.print() 行为。
+     * 调用时页面 DOM 已准备好（cherry-export-only 类已添加、代码块已展开），
+     * 函数只需生成 PDF 内容并以 Uint8Array 形式返回即可。
+     * @type {null | (() => Promise<Uint8Array>)}
+     */
+    pdfExporter: null,
+  },
   previewer: {
     dom: false,
     className: 'cherry-markdown',
