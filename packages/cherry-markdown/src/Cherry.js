@@ -405,7 +405,10 @@ export default class Cherry extends CherryStatic {
         break;
       case 'previewOnly':
         this.previewer.previewOnly();
-        isShowToolbar = false;
+        // Ribbon 模式下保留工具栏，否则无法切回其他模式
+        if (!this.options.toolbars.toolbarTabs || this.options.toolbars.toolbarTabs.length === 0) {
+          isShowToolbar = false;
+        }
         break;
       case 'wysiwyg':
         this.$switchToWysiwyg();

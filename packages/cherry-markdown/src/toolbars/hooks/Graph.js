@@ -202,7 +202,8 @@ export default class Graph extends MenuBase {
   constructor($cherry) {
     super($cherry);
     this.setName('graph', 'insertChart');
-    this.noIcon = true;
+    this.noIcon = false;
+    this.ribbonFlatten = true;
     this.localeName = $cherry.options.locale;
     this.subMenuConfig = [
       // 流程图

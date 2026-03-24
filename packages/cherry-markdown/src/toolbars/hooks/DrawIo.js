@@ -21,8 +21,8 @@ import { drawioDialog } from '@/utils/dialog';
 export default class DrawIo extends MenuBase {
   constructor($cherry) {
     super($cherry);
-    this.setName('draw.io', 'draw.io');
-    this.noIcon = true;
+    this.setName('draw.io', 'edit');
+    this.noIcon = false;
   }
 
   /**

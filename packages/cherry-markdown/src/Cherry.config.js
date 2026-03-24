@@ -705,12 +705,8 @@ const defaultConfig = {
         buttons: ['graph', 'drawIo'],
       },
       {
-        name: 'tabDesign',
-        buttons: ['shortcutKey'],
-      },
-      {
         name: 'tabView',
-        buttons: ['togglePreview', 'switchWysiwyg', '|', 'export'],
+        buttons: ['switchWysiwyg', '|', 'export', '|', 'shortcutKey'],
       },
     ],
     toolbarRight: [],

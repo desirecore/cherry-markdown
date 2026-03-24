@@ -18,22 +18,23 @@ import MenuBase from '@/toolbars/MenuBase';
 export default class Export extends MenuBase {
   constructor($cherry) {
     super($cherry);
-    this.setName('export');
-    this.noIcon = true;
+    this.setName('export', 'export');
+    this.noIcon = false;
     this.updateMarkdown = false;
+    this.ribbonFlatten = true;
 
     this.subMenuConfig = [];
 
     // window.print 可用时 才显示 “导出 PDF” 方式
     if (typeof window !== 'undefined' && typeof window.print === 'function') {
-      this.subMenuConfig.push({ noIcon: true, name: 'exportToPdf', onclick: this.bindSubClick.bind(this, 'pdf') });
+      this.subMenuConfig.push({ iconName: 'pdf', name: 'exportToPdf', onclick: this.bindSubClick.bind(this, 'pdf') });
     }
 
     this.subMenuConfig.push(
-      { noIcon: true, name: 'exportScreenshot', onclick: this.bindSubClick.bind(this, 'screenShot') },
-      { noIcon: true, name: 'exportMarkdownFile', onclick: this.bindSubClick.bind(this, 'markdown') },
-      { noIcon: true, name: 'exportHTMLFile', onclick: this.bindSubClick.bind(this, 'html') },
-      { noIcon: true, name: 'exportWordFile', onclick: this.bindSubClick.bind(this, 'word') },
+      { iconName: 'image', name: 'exportScreenshot', onclick: this.bindSubClick.bind(this, 'screenShot') },
+      { iconName: 'download', name: 'exportMarkdownFile', onclick: this.bindSubClick.bind(this, 'markdown') },
+      { iconName: 'code', name: 'exportHTMLFile', onclick: this.bindSubClick.bind(this, 'html') },
+      { iconName: 'word', name: 'exportWordFile', onclick: this.bindSubClick.bind(this, 'word') },
     );
   }
 

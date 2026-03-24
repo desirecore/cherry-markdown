@@ -783,6 +783,8 @@ export interface CherryToolbarsOptions<F extends CherryToolbarsCustomType = Cher
       )[]
     | false;
   toolbarRight?: (CherryDefaultBubbleToolbar | CherryDefaultToolbar)[] | false;
+  /** Ribbon 风格标签页工具栏配置，设置后替代扁平 toolbar */
+  toolbarTabs?: { name: string; buttons: (string | Record<string, string[]>)[] }[] | false;
   /** 是否展示悬浮目录 */
   toc?:
     | false

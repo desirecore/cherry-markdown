@@ -11,6 +11,7 @@ export default class SwitchWysiwyg extends MenuBase {
     super($cherry);
     this.setName('switchWysiwyg', 'swap');
     this.updateMarkdown = false;
+    this.ribbonFlatten = true;
     this.subMenuConfig = this.$buildSubMenuConfig();
   }
 
