@@ -8,6 +8,7 @@
  */
 import { preprocessHTMLForWord } from './exportWord';
 import Logger from '@/Logger';
+import HTMLtoDOCX from '@turbodocx/html-to-docx';
 
 /**
  * 增强 HTML 以适配 html-to-docx 的要求
@@ -173,14 +174,11 @@ function inlineStyles(container) {
 
 /**
  * 调用 html-to-docx 生成 DOCX Blob
- * 使用动态 import 以避免影响首屏加载体积
  * @param {string} processedHtml 预处理后的 HTML
  * @param {object} [options]
  * @returns {Promise<Blob>}
  */
 async function generateDocxBlob(processedHtml, options = {}) {
-  const { default: HTMLtoDOCX } = await import('@turbodocx/html-to-docx');
-
   const { title = '', font = 'Arial', fontSize = '11pt' } = options;
 
   const fullHtml = `<!DOCTYPE html>
