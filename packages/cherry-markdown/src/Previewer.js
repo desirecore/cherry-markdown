@@ -1207,10 +1207,12 @@ export default class Previewer {
    * 'pdf'：导出成pdf文件; 'img' | screenShot：导出成png图片; 'markdown'：导出成markdown文件; 'html'：导出成html文件; 'word'：导出到Word（复制到剪贴板）;
    * @param {string} [fileName] 导出文件名
    */
-  export(type = 'pdf', fileName = '') {
+  async export(type = 'pdf', fileName = '') {
     const name = fileName ? fileName : this.$cherry.getFirstLineText('cherry-export');
     if (type === 'pdf') {
-      exportPDF(this.getDomContainer(), name);
+      await exportPDF(this.getDomContainer(), name, {
+        pdfExporter: this.$cherry.options?.export?.pdfExporter,
+      });
     } else if (type === 'screenShot' || type === 'img') {
       exportScreenShot(this.getDomContainer(), name);
     } else if (type === 'markdown') {
