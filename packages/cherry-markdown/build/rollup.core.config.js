@@ -41,8 +41,8 @@ const options = {
     name: 'Cherry',
     sourcemap: false,
     compact: true,
+    inlineDynamicImports: true,
     plugins: [terserPlugin()],
-    manualChunks: undefined, // UMD 单文件输出不需要代码分割
   },
   plugins: baseConfig.plugins || [],
 };

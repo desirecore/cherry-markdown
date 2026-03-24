@@ -36,13 +36,13 @@ const umdOutputConfig = {
   name: 'Cherry',
   sourcemap: false,
   compact: true,
+  inlineDynamicImports: true,
   plugins: [terserPlugin()],
   globals: {
     mermaid: 'mermaid',
     codemirror: 'CodeMirror',
     'codemirror/src/util/misc': 'CodeMirror',
   },
-  manualChunks: undefined, // UMD 单文件输出不需要代码分割
 };
 
 const esmOutputConfig = {
@@ -52,6 +52,7 @@ const esmOutputConfig = {
   name: 'Cherry',
   sourcemap: false,
   compact: true,
+  inlineDynamicImports: true,
   plugins: [
     terserPlugin({
       module: true,

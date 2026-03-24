@@ -39,8 +39,8 @@ const umdOutputConfig = {
   name: 'CherryEngine',
   sourcemap: false,
   compact: true,
+  inlineDynamicImports: true,
   plugins: [terserPlugin()],
-  manualChunks: undefined, // UMD 单文件输出不需要代码分割
 };
 
 const esmOutputConfig = {
@@ -50,6 +50,7 @@ const esmOutputConfig = {
   name: 'CherryEngine',
   sourcemap: false,
   compact: true,
+  inlineDynamicImports: true,
   plugins: [
     terserPlugin({
       module: true,
