@@ -21,7 +21,7 @@ import { getBlockTopAndHeightWithMargin } from './utils/dom';
 import Logger from './Logger';
 // import locale from './utils/locale';
 import { addEvent, removeEvent } from './utils/event';
-import { exportPDF, exportScreenShot, exportMarkdownFile, exportHTMLFile, exportWordFile } from './utils/export';
+import { exportPDF, exportScreenShot, exportMarkdownFile, exportHTMLFile, exportWordFile, exportDocxFile } from './utils/export';
 import PreviewerBubble from './toolbars/PreviewerBubble';
 import LazyLoadImg from '@/utils/lazyLoadImg';
 
@@ -1219,6 +1219,8 @@ export default class Previewer {
       exportHTMLFile(this.getValue(), name);
     } else if (type === 'word') {
       exportWordFile(this.getValue(), name);
+    } else if (type === 'docx') {
+      exportDocxFile(this.getValue(), name, this.$cherry);
     }
   }
 

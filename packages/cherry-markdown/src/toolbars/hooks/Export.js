@@ -34,7 +34,8 @@ export default class Export extends MenuBase {
       { iconName: 'image', name: 'exportScreenshot', onclick: this.bindSubClick.bind(this, 'screenShot') },
       { iconName: 'download', name: 'exportMarkdownFile', onclick: this.bindSubClick.bind(this, 'markdown') },
       { iconName: 'code', name: 'exportHTMLFile', onclick: this.bindSubClick.bind(this, 'html') },
-      { iconName: 'word', name: 'exportWordFile', onclick: this.bindSubClick.bind(this, 'word') },
+      { iconName: 'word', name: 'exportDocxFile', onclick: this.bindSubClick.bind(this, 'docx') },
+      { iconName: 'copy', name: 'exportWordFile', onclick: this.bindSubClick.bind(this, 'word') },
     );
   }
 

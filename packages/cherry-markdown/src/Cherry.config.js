@@ -923,6 +923,16 @@ const defaultConfig = {
   wysiwyg: {
     enabled: true,
   },
+  /** 文件导出配置 */
+  fileExport: {
+    /**
+     * 自定义文件保存回调（用于 Electron/Tauri 等桌面端原生保存对话框）
+     * @param {Blob} blob 文件内容
+     * @param {string} fileName 文件名（含扩展名）
+     * @returns {Promise<boolean>} 是否保存成功；返回 false 或未提供时降级为浏览器下载
+     */
+    saveAsFile: null,
+  },
 };
 
 export default cloneDeep(defaultConfig);
