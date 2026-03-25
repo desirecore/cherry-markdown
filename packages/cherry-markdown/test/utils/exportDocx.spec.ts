@@ -1,16 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
+import { enhanceHtmlForDocx, exportDocxFile } from '../../src/utils/exportDocx';
 
-// Mock @turbodocx/html-to-docx module
-vi.mock('@turbodocx/html-to-docx', () => ({
-  default: vi.fn(async (html: string) => {
-    // Return a minimal ArrayBuffer simulating a DOCX file
-    const encoder = new TextEncoder();
-    return encoder.encode(`DOCX:${html.substring(0, 50)}`).buffer;
-  }),
-}));
-
-// We need to import after mocking
-const { enhanceHtmlForDocx, exportDocxFile } = await import('../../src/utils/exportDocx');
+/** Mock html-to-docx 转换函数 */
+const mockDocxConverter = vi.fn(async (html: string) => {
+  const encoder = new TextEncoder();
+  return encoder.encode(`DOCX:${html.substring(0, 50)}`).buffer;
+});
 
 describe('utils/exportDocx', () => {
   describe('enhanceHtmlForDocx', () => {
@@ -58,7 +53,7 @@ describe('utils/exportDocx', () => {
   describe('exportDocxFile', () => {
     it('should call saveAsFile callback when provided', async () => {
       const saveAsFile = vi.fn().mockResolvedValue(true);
-      const cherry = { options: { fileExport: { saveAsFile } } };
+      const cherry = { options: { fileExport: { saveAsFile, docxConverter: mockDocxConverter } } };
 
       await exportDocxFile('<p>Test</p>', 'test-file', cherry as any);
 
@@ -68,7 +63,7 @@ describe('utils/exportDocx', () => {
 
     it('should fallback to browser download when saveAsFile returns false', async () => {
       const saveAsFile = vi.fn().mockResolvedValue(false);
-      const cherry = { options: { fileExport: { saveAsFile } } };
+      const cherry = { options: { fileExport: { saveAsFile, docxConverter: mockDocxConverter } } };
 
       // Mock URL.createObjectURL and DOM
       const createObjectURL = vi.fn().mockReturnValue('blob:test');
@@ -82,20 +77,25 @@ describe('utils/exportDocx', () => {
       expect(createObjectURL).toHaveBeenCalled();
     });
 
-    it('should fallback to browser download when no cherry provided', async () => {
+    it('should return early when no docxConverter provided', async () => {
+      // @ts-expect-error -- Logger 依赖 BUILD_ENV 全局变量
+      globalThis.BUILD_ENV = 'production';
+
       const createObjectURL = vi.fn().mockReturnValue('blob:test');
-      const revokeObjectURL = vi.fn();
       global.URL.createObjectURL = createObjectURL;
-      global.URL.revokeObjectURL = revokeObjectURL;
 
       await exportDocxFile('<p>Test</p>', 'test-file', undefined);
 
-      expect(createObjectURL).toHaveBeenCalled();
+      // 未配置 converter 时不应触发下载
+      expect(createObjectURL).not.toHaveBeenCalled();
+
+      // @ts-expect-error -- cleanup
+      delete globalThis.BUILD_ENV;
     });
 
     it('should generate blob with correct MIME type', async () => {
       const saveAsFile = vi.fn().mockResolvedValue(true);
-      const cherry = { options: { fileExport: { saveAsFile } } };
+      const cherry = { options: { fileExport: { saveAsFile, docxConverter: mockDocxConverter } } };
 
       await exportDocxFile('<p>Test</p>', 'test-file', cherry as any);
 

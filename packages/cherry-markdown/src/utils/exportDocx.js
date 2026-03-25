@@ -1,14 +1,16 @@
 /**
  * 导出真正的 Word (.docx) 文件
  *
- * 使用 @turbodocx/html-to-docx 将 Cherry 渲染的 HTML 转换为 DOCX。
+ * 使用消费端注入的 html-to-docx 转换函数将 HTML 转换为 DOCX。
+ * html-to-docx 的 browser IIFE 格式无法被 Rollup/esbuild 正确作为模块导入，
+ * 因此采用注入模式：消费端通过 Cherry 配置 fileExport.docxConverter 传入。
+ *
  * 支持两种输出方式：
  *   1. 文件下载（浏览器 <a download> 或桌面端原生对话框）
  *   2. 剪贴板粘贴（保留在 exportWord.js 中的已有行为）
  */
 import { preprocessHTMLForWord } from './exportWord';
 import Logger from '@/Logger';
-import HTMLtoDOCX from '@turbodocx/html-to-docx';
 
 /**
  * 增强 HTML 以适配 html-to-docx 的要求
@@ -173,12 +175,13 @@ function inlineStyles(container) {
 }
 
 /**
- * 调用 html-to-docx 生成 DOCX Blob
+ * 调用消费端注入的 html-to-docx 转换函数生成 DOCX Blob
  * @param {string} processedHtml 预处理后的 HTML
+ * @param {Function} converter 消费端注入的 HTMLtoDOCX 函数
  * @param {object} [options]
  * @returns {Promise<Blob>}
  */
-async function generateDocxBlob(processedHtml, options = {}) {
+async function generateDocxBlob(processedHtml, converter, options = {}) {
   const { title = '', font = 'Arial', fontSize = '11pt' } = options;
 
   const fullHtml = `<!DOCTYPE html>
@@ -189,7 +192,7 @@ ${processedHtml}
 </body>
 </html>`;
 
-  const buffer = await HTMLtoDOCX(fullHtml, null, {
+  const buffer = await converter(fullHtml, null, {
     title,
     margins: { top: 1440, right: 1440, bottom: 1440, left: 1440 },
     table: { row: { cantSplit: true } },
@@ -226,6 +229,14 @@ function downloadDocxBrowser(blob, fileName) {
  * @param {import('../Cherry').default} [cherry] Cherry 实例（用于读取 fileExport 配置）
  */
 export async function exportDocxFile(htmlText, fileName, cherry) {
+  // 从配置中获取消费端注入的转换函数
+  const converter = cherry?.options?.fileExport?.docxConverter;
+  if (typeof converter !== 'function') {
+    Logger.error('[exportDocx] 未配置 fileExport.docxConverter，无法导出 DOCX。'
+      + ' 请在 Cherry 初始化时传入：fileExport: { docxConverter: HTMLtoDOCX }');
+    return;
+  }
+
   let processed = htmlText;
   try {
     processed = await enhanceHtmlForDocx(htmlText);
@@ -233,7 +244,7 @@ export async function exportDocxFile(htmlText, fileName, cherry) {
     Logger.warn('[exportDocx] 预处理失败，降级为原始 HTML:', e);
   }
 
-  const blob = await generateDocxBlob(processed, { title: fileName });
+  const blob = await generateDocxBlob(processed, converter, { title: fileName });
 
   // 尝试使用消费端提供的原生保存回调（Electron/Tauri）
   const saveAsFile = cherry?.options?.fileExport?.saveAsFile;

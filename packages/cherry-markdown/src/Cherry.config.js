@@ -940,6 +940,18 @@ const defaultConfig = {
      * @returns {Promise<boolean>} 是否保存成功；返回 false 或未提供时降级为浏览器下载
      */
     saveAsFile: null,
+    /**
+     * HTML → DOCX 转换函数（注入模式）
+     * html-to-docx 的浏览器 IIFE 格式无法被 Rollup/esbuild 作为模块导入，
+     * 因此由消费端安装 @turbodocx/html-to-docx 并注入转换函数。
+     *
+     * 签名: async (htmlString, headerHtml, options) => ArrayBuffer | Blob
+     * @example
+     * import HTMLtoDOCX from '@turbodocx/html-to-docx'
+     * new Cherry({ fileExport: { docxConverter: HTMLtoDOCX } })
+     * @type {Function | null}
+     */
+    docxConverter: null,
   },
 };
 
