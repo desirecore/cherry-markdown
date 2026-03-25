@@ -1,7 +1,7 @@
 {
   "name": "@desirecore/super-doc",
   "license": "Apache-2.0",
-  "version": "0.2.8",
+  "version": "0.2.9",
   "type": "module",
   "description": "A powerful Markdown editor with WYSIWYG support, based on cherry-markdown",
   "repository": {
