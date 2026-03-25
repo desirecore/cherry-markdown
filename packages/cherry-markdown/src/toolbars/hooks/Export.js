@@ -55,7 +55,7 @@ export default class Export extends MenuBase {
     // 需要未加载的图片替换成原始图片
     html = previewer.lazyLoadImg.changeDataSrc2Src(html);
     previewer.refresh(html);
-    await previewer.export(type);
+    await previewer.export(type, '', html);
     // 导出完成后，发送导出完成的信号
     if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
       const ev = new CustomEvent('cherry:export:done', { detail: { type } });

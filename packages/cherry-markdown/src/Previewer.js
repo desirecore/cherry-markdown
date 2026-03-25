@@ -1207,8 +1207,10 @@ export default class Previewer {
    * 'pdf'：导出成pdf文件; 'img' | screenShot：导出成png图片; 'markdown'：导出成markdown文件; 'html'：导出成html文件; 'word'：导出到Word（复制到剪贴板）;
    * @param {string} [fileName] 导出文件名
    */
-  async export(type = 'pdf', fileName = '') {
+  async export(type = 'pdf', fileName = '', html = '') {
     const name = fileName ? fileName : this.$cherry.getFirstLineText('cherry-export');
+    // 优先使用调用方传入的 html（WYSIWYG 模式下预览面板隐藏，this.getValue() 可能为空）
+    const content = html || this.getValue();
     if (type === 'pdf') {
       await exportPDF(this.getDomContainer(), name, {
         pdfExporter: this.$cherry.options?.export?.pdfExporter,
@@ -1218,11 +1220,11 @@ export default class Previewer {
     } else if (type === 'markdown') {
       exportMarkdownFile(this.$cherry.getMarkdown(), name);
     } else if (type === 'html') {
-      exportHTMLFile(this.getValue(), name);
+      exportHTMLFile(content, name);
     } else if (type === 'word') {
-      exportWordFile(this.getValue(), name);
+      exportWordFile(content, name);
     } else if (type === 'docx') {
-      exportDocxFile(this.getValue(), name, this.$cherry);
+      exportDocxFile(content, name, this.$cherry);
     }
   }
 
