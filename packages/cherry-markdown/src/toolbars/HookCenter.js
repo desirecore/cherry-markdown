@@ -79,6 +79,9 @@ import ShortcutKey from './hooks/ShortcutKey';
 import Search from './hooks/Search';
 import SwitchWysiwyg from './hooks/SwitchWysiwyg';
 import Footnote from './hooks/Footnote';
+import Paste from './hooks/Paste';
+import Cut from './hooks/Cut';
+import CopySelection from './hooks/CopySelection';
 
 // 定义默认支持的工具栏
 // 目前不支持按需动态加载
@@ -146,6 +149,9 @@ const HookList = {
   search: Search,
   switchWysiwyg: SwitchWysiwyg,
   footnote: Footnote,
+  paste: Paste,
+  cut: Cut,
+  copySelection: CopySelection,
 };
 
 export default class HookCenter {

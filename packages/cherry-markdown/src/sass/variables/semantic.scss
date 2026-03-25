@@ -44,8 +44,8 @@
 
   /* ========== 工具栏的下拉菜单 ========== */
   --dropdown-bg: var(--toolbar-bg);
-  --dropdown-border: var(--base-border-color);
-  --dropdown-shadow: var(--shadow-md);
+  --dropdown-border: transparent;
+  --dropdown-shadow: 0 4px 16px rgba(0, 0, 0, 0.12), 0 1px 4px rgba(0, 0, 0, 0.08);
   --dropdown-radius: var(--radius-xl);
   --dropdown-padding: var(--spacing-xs) 0;
   

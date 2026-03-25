@@ -32,6 +32,7 @@ export default class Header extends MenuBase {
       { iconName: 'h3', name: 'h3', onclick: this.bindSubClick.bind(this, '3') },
       { iconName: 'h4', name: 'h4', onclick: this.bindSubClick.bind(this, '4') },
       { iconName: 'h5', name: 'h5', onclick: this.bindSubClick.bind(this, '5') },
+      { iconName: 'h6', name: 'h6', onclick: this.bindSubClick.bind(this, '6') },
     ];
     this.shortcutKeyMap = {
       [`${getPlatformControlKey()}-${getKeyCode(1)}`]: {

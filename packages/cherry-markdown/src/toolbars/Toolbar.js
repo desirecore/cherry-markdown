@@ -109,6 +109,12 @@ export default class Toolbar {
 
   init() {
     this.$cherry.$event.on('cleanAllSubMenus', () => this.hideAllSubMenu());
+    // 点击任意非下拉菜单区域时，关闭所有子菜单
+    document.addEventListener('click', (e) => {
+      if (this.currentActiveSubMenu && !e.target.closest('.cherry-dropdown') && !e.target.closest('.cherry-toolbar-button')) {
+        this.hideAllSubMenu();
+      }
+    }, true);
   }
 
   /**
@@ -208,81 +214,35 @@ export default class Toolbar {
       const panel = createElement('div', `cherry-ribbon-panel${index === 0 ? ' cherry-ribbon-panel--active' : ''}`);
       panel.dataset.tabName = tab.name;
 
-      // Create buttons for this tab
-      tab.buttons.forEach((btnConfig) => {
-        if (btnConfig === '|') {
-          panel.appendChild(createElement('span', 'cherry-toolbar-button cherry-toolbar-split'));
-          return;
-        }
+      if (tab.groups) {
+        // 分组模式（Word 风格）
+        panel.classList.add('cherry-ribbon-panel--grouped');
+        tab.groups.forEach((group, groupIndex) => {
+          const groupEl = createElement('div', 'cherry-ribbon-group');
+          groupEl.dataset.groupName = group.name;
 
-        const name = typeof btnConfig === 'string' ? btnConfig : Object.keys(btnConfig)[0];
-        const hook = this.menus.hooks[name];
-        if (!hook) return;
-
-        // Ribbon 模式：如果 hook 标记了 ribbonFlatten，则平铺子菜单项为独立按钮
-        const subConfig = hook.getSubMenuConfig();
-        if (hook.ribbonFlatten && subConfig && subConfig.length > 0) {
-          const isRadioGroup = typeof hook.getActiveSubMenuIndex === 'function'
-            && hook.constructor.prototype.hasOwnProperty('getActiveSubMenuIndex');
-          const groupBtns = [];
-
-          subConfig.forEach((item, idx) => {
-            if (item.name === '|') {
-              panel.appendChild(createElement('span', 'cherry-toolbar-button cherry-toolbar-split'));
-              return;
-            }
-            const subBtn = createElement('span', `cherry-toolbar-button cherry-toolbar-${item.iconName || item.name}`, {
-              title: this.$cherry.locale[item.name] || item.name,
+          const buttonsEl = createElement('div', 'cherry-ribbon-group__buttons');
+          group.buttons.forEach((btnConfig) => {
+            this.$renderRibbonButton(buttonsEl, btnConfig, {
+              styleCard: group.styleCard,
+              showLabel: group.showLabel,
+              large: group.large,
             });
-            if (item.iconName) {
-              const icon = createElement('i', `ch-icon ch-icon-${item.iconName}`);
-              subBtn.appendChild(icon);
-            }
-            if (isRadioGroup) {
-              subBtn.dataset.ribbonGroup = name;
-              subBtn.dataset.ribbonIndex = idx;
-              groupBtns.push(subBtn);
-            }
-            subBtn.addEventListener('click', (e) => {
-              e.stopPropagation();
-              this.hideAllSubMenu();
-              item.onclick(e);
-              // 单选组：点击后更新选中状态
-              if (isRadioGroup) {
-                // 延迟更新，等 switchModel 完成状态变更
-                requestAnimationFrame(() => {
-                  const activeIdx = hook.getActiveSubMenuIndex(null);
-                  const activeIndices = Array.isArray(activeIdx) ? activeIdx : [activeIdx];
-                  groupBtns.forEach((btn, i) => {
-                    btn.classList.toggle('cherry-toolbar-button--selected', activeIndices.includes(i));
-                  });
-                });
-              }
-            }, false);
-            panel.appendChild(subBtn);
           });
+          groupEl.appendChild(buttonsEl);
 
-          // 初始化单选组的激活状态
-          if (isRadioGroup && groupBtns.length > 0) {
-            requestAnimationFrame(() => {
-              const activeIdx = hook.getActiveSubMenuIndex(null);
-              const activeIndices = Array.isArray(activeIdx) ? activeIdx : [activeIdx];
-              groupBtns.forEach((btn, i) => {
-                btn.classList.toggle('cherry-toolbar-button--selected', activeIndices.includes(i));
-              });
-            });
+          panel.appendChild(groupEl);
+
+          if (groupIndex < tab.groups.length - 1) {
+            panel.appendChild(createElement('span', 'cherry-ribbon-group-separator'));
           }
-          return;
-        }
-
-        const btn = hook.createBtn();
-        this.$bindBtnEvent(btn, name);
-        if (this.isHasSubMenu(name)) {
-          btn.classList.add('cherry-toolbar-dropdown');
-        }
-        panel.appendChild(btn);
-        hook.afterInit(btn);
-      });
+        });
+      } else {
+        // 扁平模式（原有逻辑）
+        (tab.buttons || []).forEach((btnConfig) => {
+          this.$renderRibbonButton(panel, btnConfig);
+        });
+      }
 
       tabPanelsContainer.appendChild(panel);
     });
@@ -293,6 +253,94 @@ export default class Toolbar {
     const toolbarLeft = createElement('div', 'toolbar-left');
     toolbarLeft.appendChild(ribbon);
     this.options.dom.appendChild(toolbarLeft);
+  }
+
+  /**
+   * 渲染单个 Ribbon 按钮到容器
+   * @param {Object} [groupOptions] 分组选项
+   * @param {boolean} [groupOptions.styleCard] 是否以样式卡片形式渲染
+   * @param {boolean|string[]} [groupOptions.showLabel] true=全部显示文字, 数组=指定按钮显示文字
+   */
+  $renderRibbonButton(container, btnConfig, groupOptions = {}) {
+    if (btnConfig === '|') {
+      container.appendChild(createElement('span', 'cherry-toolbar-button cherry-toolbar-split'));
+      return;
+    }
+
+    const name = typeof btnConfig === 'string' ? btnConfig : Object.keys(btnConfig)[0];
+    const hook = this.menus.hooks[name];
+    if (!hook) return;
+
+    // Ribbon 模式：如果 hook 标记了 ribbonFlatten，则平铺子菜单项为独立按钮
+    const subConfig = hook.getSubMenuConfig();
+    if (hook.ribbonFlatten && subConfig && subConfig.length > 0) {
+      const isRadioGroup = typeof hook.getActiveSubMenuIndex === 'function'
+        && hook.constructor.prototype.hasOwnProperty('getActiveSubMenuIndex');
+      const groupBtns = [];
+
+      subConfig.forEach((item, idx) => {
+        if (item.name === '|') {
+          container.appendChild(createElement('span', 'cherry-toolbar-button cherry-toolbar-split'));
+          return;
+        }
+        const subBtn = createElement('span', `cherry-toolbar-button cherry-toolbar-${item.iconName || item.name}`, {
+          title: this.$cherry.locale[item.name] || item.name,
+        });
+        if (item.iconName) {
+          const icon = createElement('i', `ch-icon ch-icon-${item.iconName}`);
+          subBtn.appendChild(icon);
+        }
+        if (isRadioGroup) {
+          subBtn.dataset.ribbonGroup = name;
+          subBtn.dataset.ribbonIndex = idx;
+          groupBtns.push(subBtn);
+        }
+        subBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          this.hideAllSubMenu();
+          item.onclick(e);
+          // 单选组：点击后更新选中状态
+          if (isRadioGroup) {
+            // 延迟更新，等 switchModel 完成状态变更
+            requestAnimationFrame(() => {
+              const activeIdx = hook.getActiveSubMenuIndex(null);
+              const activeIndices = Array.isArray(activeIdx) ? activeIdx : [activeIdx];
+              groupBtns.forEach((btn, i) => {
+                btn.classList.toggle('cherry-toolbar-button--selected', activeIndices.includes(i));
+              });
+            });
+          }
+        }, false);
+        container.appendChild(subBtn);
+      });
+
+      // 初始化单选组的激活状态
+      if (isRadioGroup && groupBtns.length > 0) {
+        requestAnimationFrame(() => {
+          const activeIdx = hook.getActiveSubMenuIndex(null);
+          const activeIndices = Array.isArray(activeIdx) ? activeIdx : [activeIdx];
+          groupBtns.forEach((btn, i) => {
+            btn.classList.toggle('cherry-toolbar-button--selected', activeIndices.includes(i));
+          });
+        });
+      }
+      return;
+    }
+
+    const btn = hook.createBtn();
+    const { showLabel, large } = groupOptions;
+    if (showLabel === true || (Array.isArray(showLabel) && showLabel.includes(name))) {
+      btn.classList.add('cherry-ribbon-btn--labeled');
+    }
+    if (large === true || (Array.isArray(large) && large.includes(name))) {
+      btn.classList.add('cherry-ribbon-btn--large');
+    }
+    this.$bindBtnEvent(btn, name);
+    if (this.isHasSubMenu(name)) {
+      btn.classList.add('cherry-toolbar-dropdown');
+    }
+    container.appendChild(btn);
+    hook.afterInit(btn);
   }
 
   /**
@@ -347,7 +395,10 @@ export default class Toolbar {
     const buttons = [];
     const seen = new Set();
     tabs.forEach((tab) => {
-      tab.buttons.forEach((btn) => {
+      const allButtons = tab.groups
+        ? tab.groups.flatMap((g) => g.buttons)
+        : (tab.buttons || []);
+      allButtons.forEach((btn) => {
         if (btn === '|') return;
         const name = typeof btn === 'string' ? btn : Object.keys(btn)[0];
         if (!seen.has(name)) {
@@ -367,8 +418,8 @@ export default class Toolbar {
 
   setSubMenuPosition(menuObj, subMenuObj) {
     const pos = menuObj.getMenuPosition();
-    // 115px: 避免下拉菜单超过侧边栏
-    const left = Math.min(pos.left + pos.width / 2, window.innerWidth - 115);
+    // 200px: 避免下拉菜单超过右侧边栏；100: 补偿 margin-left:-95px + 5px 左侧间距
+    const left = Math.max(100, Math.min(pos.left + pos.width / 2, window.innerWidth - 200));
     subMenuObj.style.left = `${left}px`;
     subMenuObj.style.top = `${pos.top + pos.height}px`;
     subMenuObj.style.position = menuObj.positionModel;

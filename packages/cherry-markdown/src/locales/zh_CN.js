@@ -15,10 +15,21 @@
  */
 export default {
   tabStart: '开始',
+  groupClipboard: '剪贴板',
+  groupFont: '字体',
+  groupParagraph: '段落',
+  groupStyles: '样式',
+  paste: '粘贴',
+  pasteDefault: '智能粘贴',
+  pastePlain: '粘贴为纯文本',
+  pasteMarkdown: '粘贴为 Markdown',
+  cut: '剪切',
+  copySelection: '复制',
   tabInsert: '插入',
   tabDraw: '绘图',
   tabDesign: '设计',
   tabView: '视图',
+  tabExport: '导出',
   bold: '加粗', // 加粗
   code: '代码', // 代码
   graph: '画图', // 画图
@@ -27,6 +38,7 @@ export default {
   h3: '三级标题', // 三级标题
   h4: '四级标题', // 四级标题
   h5: '五级标题', // 五级标题
+  h6: '六级标题', // 六级标题
   header: '标题', // 标题
   insert: '插入', // 插入
   italic: '斜体', // 斜体

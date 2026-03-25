@@ -575,6 +575,13 @@ export default class MenuBase {
     if (parent && parent.classList.contains('cherry-sidebar-list')) {
       parent = parent.parentElement;
     }
+    // unwrap ribbon group wrappers to preserve position detection
+    if (parent && parent.classList.contains('cherry-ribbon-group__buttons')) {
+      parent = parent.parentElement;
+    }
+    if (parent && parent.classList.contains('cherry-ribbon-group')) {
+      parent = parent.parentElement;
+    }
     if (/toolbar-(left|right)/.test(parent.className)) {
       parent = parent.parentElement;
     }

@@ -119,14 +119,14 @@
 
 .cherry-dropdown {
   position: absolute;
-  width: 130px;
+  width: 200px;
   min-height: 40px;
   background: var(--dropdown-bg);
   border: 1px solid var(--dropdown-border);
   box-shadow: var(--dropdown-shadow);
   padding: var(--dropdown-padding);
   border-radius: var(--dropdown-radius);
-  margin-left: -60px;
+  margin-left: -95px;
   z-index: 13;
 
   &-item {
@@ -134,6 +134,7 @@
     padding: var(--dropdown-item-padding);
     text-align: left;
     display: block;
+    white-space: nowrap;
     min-height: var(--dropdown-item-height);
     line-height: var(--line-height-relaxed);
     font-size: var(--font-size-sm);
@@ -167,6 +168,14 @@
     margin: var(--spacing-xs) var(--spacing-sm);
     opacity: 0.6;
   }
+
+  // 标题下拉菜单：字号递减区分级别
+  &-item .ch-icon-h1 { font-size: 20px; }
+  &-item .ch-icon-h2 { font-size: 17px; }
+  &-item .ch-icon-h3 { font-size: 15px; }
+  &-item .ch-icon-h4 { font-size: 13px; }
+  &-item .ch-icon-h5 { font-size: 12px; }
+  &-item .ch-icon-h6 { font-size: 11px; }
 }
 
 .cherry-toolbar {
@@ -350,19 +359,15 @@
       opacity: 0.6;
     }
 
-    // Ribbon 按钮纵向排列：图标在上，文字在下
+    // 非分组标签页（插入/绘图/视图/导出）：保持图标在上、文字在下的纵向布局
     .cherry-toolbar-button:not(.cherry-toolbar-split) {
       flex-direction: column;
       height: auto;
       min-width: 44px;
       padding: 6px 8px 4px;
-      font-size: 0; // 隐藏原始内联文字（子菜单场景）
+      font-size: 0;
 
-      // 图标区域
-      .ch-icon,
-      i,
-      svg,
-      img {
+      .ch-icon, i, svg, img {
         font-size: 18px;
         width: 18px;
         height: 18px;
@@ -370,7 +375,6 @@
         flex-shrink: 0;
       }
 
-      // 文字标签（取 title 属性）
       &::after {
         content: attr(title);
         font-size: 10px;
@@ -384,20 +388,156 @@
         opacity: 0.75;
       }
 
-      &:hover::after {
-        opacity: 1;
-      }
+      &:hover::after { opacity: 1; }
 
-      // 单选组选中态
       &.cherry-toolbar-button--selected {
         background: color-mix(in srgb, var(--toolbar-btn-color) 10%, transparent);
         border-radius: var(--toolbar-btn-radius);
-
-        &::after {
-          opacity: 1;
-        }
+        &::after { opacity: 1; }
       }
     }
+
+    // 插入标签页：更紧凑的按钮
+    &[data-tab-name="tabInsert"] .cherry-toolbar-button:not(.cherry-toolbar-split) {
+      min-width: 36px;
+      padding: 5px 6px 3px;
+
+      &::after {
+        font-size: 9px;
+        max-width: 42px;
+      }
+    }
+
+    // 导出标签页：更宽的按钮，完整显示文字
+    &[data-tab-name="tabExport"] .cherry-toolbar-button:not(.cherry-toolbar-split) {
+      min-width: 72px;
+      padding: 8px 14px 6px;
+
+      .ch-icon, i, svg, img {
+        font-size: 22px;
+        width: 22px;
+        height: 22px;
+      }
+
+      &::after {
+        max-width: none;
+        font-size: 11px;
+      }
+    }
+
+    // ======== 分组模式（仅"开始"标签页，Word 风格紧凑布局） ========
+    &--grouped {
+      gap: 0;
+      padding: 2px var(--spacing-md) 0;
+      min-height: 52px;
+
+      .cherry-toolbar-split {
+        min-height: 20px;
+        opacity: 0.4;
+      }
+
+      // 分组内按钮：紧凑水平布局，默认只显示图标
+      .cherry-toolbar-button:not(.cherry-toolbar-split) {
+        flex-direction: row;
+        height: 26px;
+        min-width: 28px;
+        padding: 4px 6px;
+
+        .ch-icon, i, svg, img {
+          font-size: 16px;
+          width: 16px;
+          height: 16px;
+        }
+
+        &::after {
+          display: none;
+        }
+      }
+
+      // 需要显示文字的按钮（图标 + 文字水平排列）
+      .cherry-toolbar-button.cherry-ribbon-btn--labeled {
+        &::after {
+          display: block;
+          content: attr(title);
+          font-size: 11px;
+          line-height: 1;
+          margin-top: 0;
+          margin-left: 3px;
+          max-width: none;
+          opacity: 0.85;
+          overflow: visible;
+        }
+        &:hover::after { opacity: 1; }
+      }
+
+      // 大按钮（图标在上 + 文字在下，占满组高度）
+      .cherry-toolbar-button.cherry-ribbon-btn--large {
+        flex-direction: column;
+        height: auto;
+        align-self: stretch;
+        min-width: 40px;
+        padding: 4px 8px 3px;
+
+        .ch-icon, i, svg, img {
+          font-size: 20px;
+          width: 20px;
+          height: 20px;
+        }
+
+        &::after {
+          display: block;
+          content: attr(title);
+          font-size: 10px;
+          line-height: 1.2;
+          margin-top: 2px;
+          margin-left: 0;
+          white-space: nowrap;
+          opacity: 0.8;
+        }
+
+        &:hover::after { opacity: 1; }
+
+        // 大按钮有下拉菜单时，文字后追加箭头
+        &.cherry-toolbar-dropdown::after {
+          content: attr(title) ' \25BE';
+        }
+      }
+
+    }
+  }
+
+  .cherry-ribbon-group {
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;
+  }
+
+  .cherry-ribbon-group__buttons {
+    display: grid;
+    grid-template-rows: repeat(2, 26px);
+    grid-auto-flow: column;
+    grid-auto-columns: auto;
+    gap: 2px;
+    align-items: center;
+    padding: 2px 4px;
+
+    // 分隔线跨两行
+    .cherry-toolbar-split {
+      grid-row: 1 / -1;
+    }
+
+    // 大按钮跨两行
+    .cherry-ribbon-btn--large {
+      grid-row: 1 / -1;
+    }
+  }
+
+  .cherry-ribbon-group-separator {
+    display: block;
+    width: 1px;
+    align-self: stretch;
+    margin: 4px 4px;
+    background: color-mix(in srgb, var(--toolbar-btn-color) 12%, transparent);
   }
 
   &-button {
@@ -434,6 +574,8 @@
 
     &.disabled {
       color: var(--toolbar-btn-disabled);
+      opacity: 0.4;
+      cursor: default;
     }
   }
 

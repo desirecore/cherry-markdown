@@ -694,7 +694,20 @@ const defaultConfig = {
     toolbarTabs: [
       {
         name: 'tabStart',
-        buttons: ['bold', 'italic', 'strikethrough', 'underline', '|', 'color', 'size', '|', 'header', '|', 'list', 'quote', '|', 'ruby', 'panel', 'detail'],
+        groups: [
+          { buttons: ['paste', 'cut', 'copySelection'], large: ['paste'] },
+          {
+            buttons: [
+              'header', 'bold', 'italic', 'underline',
+              { strikethrough: ['strikethrough', 'sub', 'sup', 'ruby'] },
+              'color', 'size',
+            ],
+            large: ['header'],
+          },
+          { buttons: ['ol', 'ul', 'checklist', 'quote'] },
+          { buttons: ['align'] },
+          { buttons: ['panel', 'detail'], showLabel: ['panel', 'detail'] },
+        ],
       },
       {
         name: 'tabInsert',
@@ -706,7 +719,11 @@ const defaultConfig = {
       },
       {
         name: 'tabView',
-        buttons: ['switchWysiwyg', '|', 'export', '|', 'shortcutKey'],
+        buttons: ['switchWysiwyg', '|', 'shortcutKey'],
+      },
+      {
+        name: 'tabExport',
+        buttons: ['export'],
       },
     ],
     toolbarRight: [],

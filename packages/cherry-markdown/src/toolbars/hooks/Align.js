@@ -22,6 +22,7 @@ export default class Align extends Panel {
   constructor($cherry) {
     super($cherry);
     this.setName('align', 'align');
+    this.ribbonFlatten = true;
     this.panelRule = getPanelRule().reg;
     const { locale } = this.$cherry;
     this.subMenuConfig = [
