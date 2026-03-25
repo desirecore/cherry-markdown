@@ -218,7 +218,11 @@ export default class Previewer {
    */
   getValue(wrapTheme = true) {
     let html = '';
-    if (this.isPreviewerHidden()) {
+    if (this.$cherry.status?.wysiwyg === 'show' && this.$cherry.wysiwygEditor) {
+      // WYSIWYG 模式：预览面板隐藏且缓存为空，从编辑器获取 markdown 再渲染
+      const markdown = this.$cherry.wysiwygEditor.getValue();
+      html = this.$cherry.engine.makeHtml(markdown);
+    } else if (this.isPreviewerHidden()) {
       html = this.options.previewerCache.html;
     } else {
       html = this.getDomContainer().innerHTML;
