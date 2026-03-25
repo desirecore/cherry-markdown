@@ -237,7 +237,17 @@ export async function exportDocxFile(htmlText, fileName, cherry) {
     return;
   }
 
-  let processed = htmlText;
+  // 兜底：WYSIWYG 模式下 Previewer 可能传入空 HTML，直接从 Cherry 实例重新获取
+  let sourceHtml = htmlText;
+  const stripped = htmlText?.replace(/<[^>]*>/g, '').trim();
+  if (!stripped && cherry) {
+    const markdown = cherry.getMarkdown();
+    if (markdown) {
+      sourceHtml = cherry.engine.makeHtml(markdown);
+    }
+  }
+
+  let processed = sourceHtml;
   try {
     processed = await enhanceHtmlForDocx(htmlText);
   } catch (e) {
