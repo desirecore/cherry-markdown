@@ -26,7 +26,8 @@
     "test": "yarn workspace @desirecore/super-doc test",
     "test:update": "yarn workspace @desirecore/super-doc test:update",
     "lint:all": "yarn workspace @desirecore/super-doc lint && yarn workspace @cherry-markdown/client lint && yarn workspace cherry-markdown-vscode-plugin lint",
-    "lint:fix:all": "yarn workspace @desirecore/super-doc lint:fix && yarn workspace @cherry-markdown/client lint:fix && yarn workspace cherry-markdown-vscode-plugin lint:fix"
+    "lint:fix:all": "yarn workspace @desirecore/super-doc lint:fix && yarn workspace @cherry-markdown/client lint:fix && yarn workspace cherry-markdown-vscode-plugin lint:fix",
+    "release": "./scripts/release.sh"
   },
   "devDependencies": {
     "@babel/eslint-parser": "^7.28.0",
