@@ -47,6 +47,10 @@ yarn build:client
 
 # VS Code plugin build
 yarn build:vscodePlugin
+
+# Release (pull, build, commit, push, publish)
+yarn release <version> [otp]
+# Example: yarn release 0.2.11 123456
 ```
 
 ## Core Architecture (`packages/cherry-markdown/src/`)
