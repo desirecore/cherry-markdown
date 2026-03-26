@@ -16,7 +16,6 @@
 import terser from '@rollup/plugin-terser';
 import baseConfig from './rollup.base.config.js';
 
-// TODO: 新增完整版引擎构建, 目前引擎构建仅支持核心构建
 const isCoreBuild = process.env.CORE_BUILD === 'true';
 
 const terserPlugin = (options = {}) =>

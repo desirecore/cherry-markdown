@@ -31,7 +31,11 @@ cd "$PKG_DIR"
 npx rimraf ./dist
 
 echo "==> Building (skipping types)..."
-npx run-p iconfont build:styles build:addons build:full build:core build:engine build:stream build:wysiwyg
+npx run-p iconfont build:styles build:addons build:full build:core build:engine build:engine-full build:stream build:wysiwyg
+
+echo "==> Copying engine type declarations..."
+cp dist/super-doc.engine.core.d.ts dist/super-doc.engine.d.ts
+cp dist/super-doc.engine.core.esm.d.ts dist/super-doc.engine.esm.d.ts
 
 echo "==> Committing and pushing..."
 cd "$ROOT_DIR"
