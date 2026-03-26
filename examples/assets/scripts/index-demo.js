@@ -55,7 +55,7 @@ var customMenuA = Cherry.createMenuHook('加粗斜体', {
 /**
  * 定义一个空壳，用于自行规划cherry已有工具栏的层级结构
  */
-var customMenuB = Cherry.createMenuHook('实验室', {
+var customMenuB = Cherry.createMenuHook('自定义菜单+自定义菜单图标', {
   icon: {
     type: 'svg',
     content:
@@ -66,7 +66,7 @@ var customMenuB = Cherry.createMenuHook('实验室', {
 /**
  * 定义一个自带二级菜单的工具栏
  */
-var customMenuC = Cherry.createMenuHook('帮助中心', {
+var customMenuC = Cherry.createMenuHook('自定义菜单+子菜单', {
   iconName: 'question',
   onClick: (selection, type) => {
     switch (type) {
@@ -359,6 +359,58 @@ const basicConfig = {
     file: true,
   },
   toolbars: {
+    toolbar: [
+      'bold',
+      'italic',
+      {
+        strikethrough: ['strikethrough', 'underline', 'sub', 'sup', 'ruby', 'customMenuAName'],
+      },
+      'size',
+      '|',
+      'color',
+      'header',
+      '|',
+      'drawIo',
+      '|',
+      'ol',
+      'ul',
+      'checklist',
+      'panel',
+      'align',
+      'detail',
+      '|',
+      'formula',
+      {
+        insert: [
+          'image',
+          'audio',
+          'video',
+          'link',
+          'hr',
+          'br',
+          'code',
+          'inlineCode',
+          'formula',
+          'toc',
+          'table',
+          'pdf',
+          'word',
+          'file',
+        ],
+      },
+      'graph',
+      'proTable',
+      '|',
+      // 'customMenuTable',
+      {
+        customMenuBName: ['ruby', 'audio', 'video', 'customMenuAName'],
+      },
+      'customMenuCName',
+      '|',
+      'shortcutKey',
+      'search',
+      'togglePreview',
+    ],
     toolbarRight: ['fullScreen', '|', 'export', 'changeLocale', '|', 'wordCount', '|', 'cursorPosition'],
     bubble: ['bold', 'italic', 'underline', 'strikethrough', 'sub', 'sup', 'quote', 'ruby', '|', 'size', 'color'], // array or false
     sidebar: ['mobilePreview', 'theme', 'codeTheme'],
