@@ -1,6 +1,8 @@
+import { Selection } from 'prosemirror-state';
 import Logger from './Logger';
 import { setDrawioConfig } from './wysiwyg/nodes/drawio';
 import { setTocLocale } from './wysiwyg/nodes/toc';
+import { setDetailLocale } from './wysiwyg/nodes/detail';
 import { setCherryImageLocale } from './wysiwyg/nodes/cherryImage';
 
 /**
@@ -30,17 +32,17 @@ export default class WysiwygEditor {
 
   /**
    * 初始化 Milkdown Crepe 编辑器
-   * @returns {Promise<void>}
+   * @returns {Promise<boolean>} 是否成功初始化
    */
   async init() {
     if (this.initialized) {
-      return;
+      return false;
     }
 
     const wysiwygConfig = this.$cherry.options.wysiwyg;
     if (!wysiwygConfig?.Crepe) {
       Logger.error('WYSIWYG mode requires Milkdown Crepe. Use Cherry.usePlugin(MilkdownWysiwygPlugin, { Crepe }).');
-      return;
+      return false;
     }
 
     const CrepeClass = wysiwygConfig.Crepe;
@@ -54,9 +56,10 @@ export default class WysiwygEditor {
       });
     }
 
-    // Set locale for TOC node title and image tool buttons
+    // Set locale for TOC, detail, image node titles
     if (this.$cherry.locale) {
       setTocLocale(this.$cherry.locale);
+      setDetailLocale(this.$cherry.locale);
       setCherryImageLocale(this.$cherry.locale);
     }
 
@@ -97,6 +100,54 @@ export default class WysiwygEditor {
     this.initialized = true;
     this.lastMarkdownText = this.value;
 
+    // 拦截链接点击，为缺少协议前缀的 URL 自动补全 https://
+    this._onLinkClick = (e) => {
+      const anchor = e.target.closest?.('a[href]');
+      if (!anchor) return;
+      const href = anchor.getAttribute('href');
+      if (href && !/^[a-z][a-z\d+\-.]*:/i.test(href) && !href.startsWith('//') && !href.startsWith('#')) {
+        e.preventDefault();
+        window.open(`https://${href}`, anchor.target || '_blank');
+      }
+    };
+    this.editorDom.addEventListener('click', this._onLinkClick);
+
+    // 手风琴标题栏点击 — 切换展开/收起
+    this._onDetailToggle = (e) => {
+      const summary = e.target.closest?.('.cherry-detail-summary');
+      if (!summary) return;
+      const wrapper = summary.parentElement;
+      if (!wrapper?.classList.contains('cherry-detail-edit')) return;
+      e.preventDefault();
+      this.crepe.editor.action((ctx) => {
+        const view = ctx.get('editorView');
+        const pos = view.posAtDOM(wrapper, 0);
+        const $pos = view.state.doc.resolve(pos);
+        for (let d = $pos.depth; d > 0; d--) {
+          const node = $pos.node(d);
+          if (node.type.name === 'cherry_detail') {
+            const nodePos = $pos.before(d);
+            const nowOpen = node.attrs.open;
+            const tr = view.state.tr.setNodeMarkup(nodePos, undefined, {
+              ...node.attrs,
+              open: !nowOpen,
+            });
+            view.dispatch(tr);
+            // 收起时，如果光标在该 detail 内部，将光标移到节点之后
+            if (nowOpen) {
+              const afterPos = nodePos + node.nodeSize;
+              const newState = view.state;
+              const $after = newState.doc.resolve(Math.min(afterPos, newState.doc.content.size));
+              const sel = Selection.near($after);
+              view.dispatch(newState.tr.setSelection(sel));
+            }
+            return;
+          }
+        }
+      });
+    };
+    this.editorDom.addEventListener('click', this._onDetailToggle);
+
     // 监听选区变化，通知光标位置等 UI 组件
     this._onSelectionChange = () => {
       this.$cherry.$event.emit('wysiwygSelectionChange');
@@ -108,6 +159,8 @@ export default class WysiwygEditor {
       this.$cherry.$event.emit('wysiwygScroll');
     };
     this.editorDom.addEventListener('scroll', this._onScroll, true);
+
+    return true;
   }
 
   /**
@@ -167,7 +220,7 @@ export default class WysiwygEditor {
     // 处理 ProseMirror history 命令（不走 commandsCtx）
     if (map.prosemirrorCommands?.[buttonName]) {
       try {
-        const view = this.crepe.editor.action((ctx) => ctx.get(map.editorViewCtx));
+        const view = this.crepe.editor.action((ctx) => ctx.get('editorView'));
         return map.prosemirrorCommands[buttonName](view) !== false;
       } catch (e) {
         Logger.warn(`WYSIWYG prosemirror command failed: ${buttonName}`, e);
@@ -181,9 +234,9 @@ export default class WysiwygEditor {
 
     try {
       return this.crepe.editor.action((ctx) => {
-        const commands = ctx.get(map.commandsCtx);
+        const commands = ctx.get('commands');
         const payload = typeof entry.payload === 'function' ? entry.payload(shortKey) : entry.payload;
-        return commands.call(entry.cmd.key, payload);
+        return commands.call(entry.key, payload);
       });
     } catch (e) {
       Logger.warn(`WYSIWYG command failed: ${buttonName}`, e);
@@ -203,8 +256,8 @@ export default class WysiwygEditor {
     if (!map?.commands?.table) return false;
     try {
       return this.crepe.editor.action((ctx) => {
-        const commands = ctx.get(map.commandsCtx);
-        return commands.call(map.commands.table.cmd.key, { row, col });
+        const commands = ctx.get('commands');
+        return commands.call(map.commands.table.key, { row, col });
       });
     } catch (e) {
       Logger.warn('WYSIWYG insertTable failed', e);
@@ -224,7 +277,7 @@ export default class WysiwygEditor {
     if (!map) return false;
     try {
       return this.crepe.editor.action((ctx) => {
-        const view = ctx.get(map.editorViewCtx);
+        const view = ctx.get('editorView');
         const { state, dispatch } = view;
 
         if (isBlock) {
@@ -273,7 +326,7 @@ export default class WysiwygEditor {
     if (!map) return false;
     try {
       return this.crepe.editor.action((ctx) => {
-        const view = ctx.get(map.editorViewCtx);
+        const view = ctx.get('editorView');
         const { state, dispatch } = view;
         dispatch(state.tr.insertText(text));
         return true;
@@ -296,7 +349,7 @@ export default class WysiwygEditor {
     if (!map) return false;
     try {
       return this.crepe.editor.action((ctx) => {
-        const view = ctx.get(map.editorViewCtx);
+        const view = ctx.get('editorView');
         const { state, dispatch } = view;
         const linkMark = state.schema.marks.link?.create({ href });
         if (!linkMark) return false;
@@ -322,7 +375,7 @@ export default class WysiwygEditor {
     if (!map) return false;
     try {
       return this.crepe.editor.action((ctx) => {
-        const view = ctx.get(map.editorViewCtx);
+        const view = ctx.get('editorView');
         const { state, dispatch } = view;
         const codeBlockType = state.schema.nodes.code_block;
         if (!codeBlockType) return false;
@@ -349,7 +402,7 @@ export default class WysiwygEditor {
     if (!map) return { line: 0, ch: 0, selected: 0 };
     try {
       return this.crepe.editor.action((ctx) => {
-        const view = ctx.get(map.editorViewCtx);
+        const view = ctx.get('editorView');
         const { state } = view;
         const { from, to, $from } = state.selection;
         const line = $from.index(0) + 1;
@@ -830,9 +883,17 @@ export default class WysiwygEditor {
    * 销毁 Milkdown 实例
    */
   destroy() {
+    if (this._onLinkClick) {
+      this.editorDom.removeEventListener('click', this._onLinkClick);
+      this._onLinkClick = null;
+    }
     if (this._onSelectionChange) {
       document.removeEventListener('selectionchange', this._onSelectionChange);
       this._onSelectionChange = null;
+    }
+    if (this._onDetailToggle) {
+      this.editorDom.removeEventListener('click', this._onDetailToggle);
+      this._onDetailToggle = null;
     }
     if (this._onScroll) {
       this.editorDom.removeEventListener('scroll', this._onScroll, true);

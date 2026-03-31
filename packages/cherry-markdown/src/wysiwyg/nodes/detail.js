@@ -8,10 +8,21 @@
  * Renders as <details><summary>...</summary>content</details> in the WYSIWYG editor.
  */
 import { $nodeSchema, $command, $remark } from '@milkdown/kit/utils';
+import { wrapIn } from 'prosemirror-commands';
 import { transformCherryBlocks, getNodeText } from './utils';
 
 const NODE_NAME = 'cherry_detail';
 const MDAST_TYPE = 'cherryDetail';
+
+let detailLocale = { detail: 'Detail' };
+
+export function setDetailLocale(locale) {
+  if (locale) detailLocale = locale;
+}
+
+function defaultTitle() {
+  return detailLocale.detail || 'Detail';
+}
 
 // Match opening line: +++[-] Title
 const START_PATTERN = /^\+\+\+(-?)\s+(.+)$/;
@@ -79,6 +90,7 @@ export const detailSchema = $nodeSchema(NODE_NAME, () => ({
   },
   defining: true,
   parseDOM: [
+    // Paste from HTML: <details><summary>...</summary>...</details>
     {
       tag: 'details',
       getAttrs: (dom) => ({
@@ -86,16 +98,28 @@ export const detailSchema = $nodeSchema(NODE_NAME, () => ({
         open: dom.hasAttribute('open'),
       }),
       contentElement: (dom) => {
-        // Content is everything except <summary>
         const body = dom.querySelector('.cherry-detail-body');
         return body || dom;
       },
     },
+    // Editor round-trip: div.cherry-detail-edit
+    {
+      tag: 'div.cherry-detail-edit',
+      getAttrs: (dom) => ({
+        title: dom.querySelector('.cherry-detail-summary')?.textContent?.trim() || '',
+        open: dom.dataset.open === 'true',
+      }),
+      contentElement: '.cherry-detail-body',
+    },
   ],
+  // Use <div> instead of <details> to avoid native toggle conflicting with ProseMirror
   toDOM: (node) => [
-    'details',
-    node.attrs.open ? { open: 'open', class: 'cherry-detail' } : { class: 'cherry-detail' },
-    ['summary', { contenteditable: 'false' }, node.attrs.title || ''],
+    'div',
+    {
+      class: 'cherry-detail-edit',
+      'data-open': node.attrs.open ? 'true' : 'false',
+    },
+    ['div', { class: 'cherry-detail-summary', contenteditable: 'false' }, node.attrs.title || defaultTitle()],
     ['div', { class: 'cherry-detail-body' }, 0],
   ],
   parseMarkdown: {
@@ -120,23 +144,28 @@ export const detailSchema = $nodeSchema(NODE_NAME, () => ({
 }));
 
 export const insertDetailCommand = $command('InsertDetail', (ctx) => (title = '') =>
-  (state, dispatch) => {
+  (state, dispatch, view) => {
     const nodeType = state.schema.nodes[NODE_NAME];
     if (!nodeType) return false;
 
-    // Try to wrap current selection in a detail
-    const { $from, $to } = state.selection;
-    const range = $from.blockRange($to);
-    if (range) {
-      const tr = state.tr.wrap(range, [{ type: nodeType, attrs: { title: title || '', open: false } }]);
-      dispatch?.(tr);
-      return true;
-    }
+    const attrs = { title: title || defaultTitle(), open: true };
 
-    // Fallback: insert an empty detail with a paragraph
-    const paragraph = state.schema.nodes.paragraph.create(null, state.schema.text(' '));
-    const detailNode = nodeType.create({ title: title || '', open: false }, paragraph);
-    dispatch?.(state.tr.replaceSelectionWith(detailNode));
+    // Use prosemirror wrapIn — robust, handles edge cases, preserves content
+    if (wrapIn(nodeType, attrs)(state, dispatch, view)) return true;
+
+    // Fallback: replace current block with a detail containing its content
+    if (dispatch) {
+      const { $from } = state.selection;
+      if ($from.depth < 1) return false;
+      const parent = $from.parent;
+      const content = parent.content.size > 0
+        ? parent.type.create(parent.attrs, parent.content)
+        : state.schema.nodes.paragraph.create();
+      const detailNode = nodeType.create(attrs, content);
+      const from = $from.before($from.depth);
+      const to = $from.after($from.depth);
+      dispatch(state.tr.replaceWith(from, to, detailNode));
+    }
     return true;
   },
 );

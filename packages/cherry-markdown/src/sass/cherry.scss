@@ -1431,6 +1431,78 @@
       transition: background 0.3s ease;
     }
   }
+
+  /* 手风琴/折叠块 — WYSIWYG 编辑模式使用 div 代替 <details> 避免原生行为冲突 */
+  .cherry-detail-edit {
+    background: var(--accordion-bg);
+    border: 1px solid var(--accordion-border);
+    border-radius: calc(var(--accordion-radius) + 1px);
+    box-shadow: var(--accordion-shadow);
+    margin-bottom: var(--spacing-md);
+    overflow: hidden;
+
+    .cherry-detail-summary {
+      background: var(--accordion-summary-bg);
+      color: var(--accordion-summary-color);
+      padding: var(--spacing-md) var(--spacing-lg) var(--spacing-md) calc(var(--spacing-lg) + var(--spacing-xl));
+      font-weight: 600;
+      position: relative;
+      user-select: none;
+      cursor: pointer;
+
+      &:hover {
+        background: var(--accordion-summary-hover-bg);
+      }
+
+      &::before {
+        content: '▶';
+        position: absolute;
+        left: var(--spacing-md);
+        top: 50%;
+        transform: translateY(-50%);
+        font-size: 0.75em;
+        transition: transform 0.2s ease;
+      }
+    }
+
+    /* 展开状态 */
+    &[data-open="true"] .cherry-detail-summary {
+      border-radius: var(--accordion-radius) var(--accordion-radius) 0 0;
+
+      &::before {
+        transform: translateY(-50%) rotate(90deg);
+      }
+    }
+
+    /* 收起状态 — 隐藏内容体 */
+    &[data-open="false"] {
+      .cherry-detail-summary {
+        border-radius: var(--accordion-radius);
+      }
+
+      .cherry-detail-body {
+        display: none;
+      }
+    }
+
+    .cherry-detail-body {
+      padding: var(--spacing-lg);
+      background: var(--accordion-body-bg);
+      border-top: 1px solid var(--accordion-body-border);
+      color: var(--accordion-body-color);
+      line-height: var(--line-height-relaxed);
+      border-radius: 0 0 var(--accordion-radius) var(--accordion-radius);
+      min-height: 2em;
+
+      > *:first-child {
+        margin-top: 0;
+      }
+
+      > *:last-child {
+        margin-bottom: 0;
+      }
+    }
+  }
 }
 
 /* WYSIWYG 脚注气泡卡片 */
@@ -2393,7 +2465,7 @@
   .ProseMirror > .cherry-wysiwyg-image-wrapper.cherry-img-align-float-right {
     ~ blockquote,
     ~ .cherry-panel,
-    ~ .cherry-detail,
+    ~ .cherry-detail-edit,
     ~ .cherry-toc-block,
     ~ .milkdown-code-block,
     ~ pre,

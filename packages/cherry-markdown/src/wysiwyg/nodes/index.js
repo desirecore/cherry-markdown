@@ -13,7 +13,7 @@ import { cherryImage } from './cherryImage';
 
 export { rubySchema, insertRubyCommand, ruby } from './ruby';
 export { panelSchema, insertPanelCommand, panel } from './panel';
-export { detailSchema, insertDetailCommand, detail } from './detail';
+export { detailSchema, insertDetailCommand, setDetailLocale, detail } from './detail';
 export { video, audio } from './media';
 export { footnote, insertFootnoteCommand } from './footnote';
 export { tocSchema, insertTocCommand, setTocLocale, toc } from './toc';

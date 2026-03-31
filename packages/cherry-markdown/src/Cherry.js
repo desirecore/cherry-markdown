@@ -453,7 +453,16 @@ export default class Cherry extends CherryStatic {
         editorDom: this.wysiwygDom,
         value: markdown,
       });
-      await this.wysiwygEditor.init();
+      const result = await this.wysiwygEditor.init();
+      if (result === false) {
+        Logger.warn('WYSIWYG init failed, falling back to edit&preview');
+        this.wysiwygDom.classList.add('cherry-wysiwyg--hidden');
+        this.editor.options.editorDom.classList.remove('cherry-editor--hidden');
+        this.previewer.options.previewerDom.classList.remove('cherry-previewer--hidden');
+        this.previewer.options.virtualDragLineDom.classList.remove('cherry-drag--hidden');
+        this.switchModel('edit&preview');
+        return;
+      }
     } else {
       this.wysiwygEditor.setValue(markdown);
     }

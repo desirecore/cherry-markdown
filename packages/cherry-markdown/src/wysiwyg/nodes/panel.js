@@ -8,6 +8,7 @@
  * Renders as a styled container div in the WYSIWYG editor.
  */
 import { $nodeSchema, $command, $remark } from '@milkdown/kit/utils';
+import { wrapIn } from 'prosemirror-commands';
 import { transformCherryBlocks, getNodeText } from './utils';
 
 const NODE_NAME = 'cherry_panel';
@@ -146,23 +147,28 @@ export const panelSchema = $nodeSchema(NODE_NAME, () => ({
 }));
 
 export const insertPanelCommand = $command('InsertPanel', (ctx) => (panelType = 'primary') =>
-  (state, dispatch) => {
+  (state, dispatch, view) => {
     const nodeType = state.schema.nodes[NODE_NAME];
     if (!nodeType) return false;
 
-    // Try to wrap current selection in a panel
-    const { $from, $to } = state.selection;
-    const range = $from.blockRange($to);
-    if (range) {
-      const tr = state.tr.wrap(range, [{ type: nodeType, attrs: { panelType, title: '' } }]);
-      dispatch?.(tr);
-      return true;
-    }
+    const attrs = { panelType, title: '' };
 
-    // Fallback: insert an empty panel with a paragraph
-    const paragraph = state.schema.nodes.paragraph.create(null, state.schema.text(' '));
-    const panelNode = nodeType.create({ panelType, title: '' }, paragraph);
-    dispatch?.(state.tr.replaceSelectionWith(panelNode));
+    // Use prosemirror wrapIn — robust, handles edge cases, preserves content
+    if (wrapIn(nodeType, attrs)(state, dispatch, view)) return true;
+
+    // Fallback: replace current block with a panel containing its content
+    if (dispatch) {
+      const { $from } = state.selection;
+      if ($from.depth < 1) return false;
+      const parent = $from.parent;
+      const content = parent.content.size > 0
+        ? parent.type.create(parent.attrs, parent.content)
+        : state.schema.nodes.paragraph.create();
+      const panelNode = nodeType.create(attrs, content);
+      const from = $from.before($from.depth);
+      const to = $from.after($from.depth);
+      dispatch(state.tr.replaceWith(from, to, panelNode));
+    }
     return true;
   },
 );

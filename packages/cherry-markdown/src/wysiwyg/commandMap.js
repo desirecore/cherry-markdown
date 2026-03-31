@@ -2,38 +2,11 @@
  * Milkdown 命令映射表
  * 将 Cherry 工具栏按钮名映射到 Milkdown ProseMirror 命令
  *
- * 注意：Milkdown 的 $command 返回的 plugin 对象的 .key 属性是在编辑器初始化后才赋值的，
- * 因此这里存储 command 对象引用，在执行时通过 cmd.key 获取实际的命令 key。
+ * 使用纯字符串 key 调用 Milkdown 命令，避免直接导入 @milkdown/* 子包。
+ * 这样消费方项目的 Vite 预构建不会因为重新打包产生新的 Symbol，
+ * 导致 ctx.get(commandsCtx) 身份不匹配问题。
  */
-import { commandsCtx, editorViewCtx } from '@milkdown/kit/core';
-import {
-  toggleStrongCommand,
-  toggleEmphasisCommand,
-  toggleInlineCodeCommand,
-  wrapInHeadingCommand,
-  wrapInBulletListCommand,
-  wrapInOrderedListCommand,
-  wrapInBlockquoteCommand,
-  createCodeBlockCommand,
-  insertHrCommand,
-  toggleLinkCommand,
-  insertHardbreakCommand,
-  listItemSchema,
-  wrapInBlockTypeCommand,
-  clearTextInCurrentBlockCommand,
-} from '@milkdown/kit/preset/commonmark';
-import { toggleStrikethroughCommand, insertTableCommand } from '@milkdown/kit/preset/gfm';
-import { undo, redo } from '@milkdown/kit/prose/history';
-import {
-  toggleSuperscriptCommand,
-  toggleSubscriptCommand,
-  toggleUnderlineCommand,
-  toggleHighlightCommand,
-  toggleFontColorCommand,
-  toggleBgColorCommand,
-  toggleFontSizeCommand,
-} from './marks';
-import { insertRubyCommand, insertPanelCommand, insertDetailCommand, insertFootnoteCommand, insertTocCommand, insertDrawioCommand, insertCherryImageCommand } from './nodes';
+import { undo, redo } from 'prosemirror-history';
 
 /**
  * 从 Header 按钮的 shortKey 中解析标题级别
@@ -49,52 +22,50 @@ function parseHeadingLevel(shortKey) {
  */
 export function createWysiwygCommandMap() {
   return {
-    commandsCtx,
-    editorViewCtx,
     commands: {
-      // 行内格式化 — 存储 command 对象引用，运行时取 .key
-      bold: { cmd: toggleStrongCommand },
-      italic: { cmd: toggleEmphasisCommand },
-      strikethrough: { cmd: toggleStrikethroughCommand },
-      inlineCode: { cmd: toggleInlineCodeCommand },
-      link: { cmd: toggleLinkCommand, payload: { href: '' } },
-      sup: { cmd: toggleSuperscriptCommand },
-      sub: { cmd: toggleSubscriptCommand },
-      underline: { cmd: toggleUnderlineCommand },
-      highlight: { cmd: toggleHighlightCommand },
+      // 行内格式化 — 使用字符串 key
+      bold: { key: 'ToggleStrong' },
+      italic: { key: 'ToggleEmphasis' },
+      strikethrough: { key: 'ToggleStrikeThrough' },
+      inlineCode: { key: 'ToggleInlineCode' },
+      link: { key: 'ToggleLink', payload: { href: '' } },
+      sup: { key: 'ToggleSuperscript' },
+      sub: { key: 'ToggleSubscript' },
+      underline: { key: 'ToggleUnderline' },
+      highlight: { key: 'ToggleHighlight' },
 
       // 标题
-      header: { cmd: wrapInHeadingCommand, payload: (shortKey) => parseHeadingLevel(shortKey) },
-      h1: { cmd: wrapInHeadingCommand, payload: 1 },
-      h2: { cmd: wrapInHeadingCommand, payload: 2 },
-      h3: { cmd: wrapInHeadingCommand, payload: 3 },
+      header: { key: 'WrapInHeading', payload: (shortKey) => parseHeadingLevel(shortKey) },
+      h1: { key: 'WrapInHeading', payload: 1 },
+      h2: { key: 'WrapInHeading', payload: 2 },
+      h3: { key: 'WrapInHeading', payload: 3 },
 
       // 列表
-      ul: { cmd: wrapInBulletListCommand },
-      ol: { cmd: wrapInOrderedListCommand },
-      list: { cmd: wrapInBulletListCommand },
+      ul: { key: 'WrapInBulletList' },
+      ol: { key: 'WrapInOrderedList' },
+      list: { key: 'WrapInBulletList' },
 
       // 块级元素
-      quote: { cmd: wrapInBlockquoteCommand },
-      code: { cmd: createCodeBlockCommand },
-      hr: { cmd: insertHrCommand },
-      br: { cmd: insertHardbreakCommand },
-      table: { cmd: insertTableCommand },
+      quote: { key: 'WrapInBlockquote' },
+      code: { key: 'CreateCodeBlock' },
+      hr: { key: 'InsertHr' },
+      br: { key: 'InsertHardbreak' },
+      table: { key: 'InsertTable' },
     },
     // 需要 Milkdown ctx 的复杂命令（接收 ctx 和 shortKey 参数）
     ctxCommands: {
       // "插入"下拉菜单：根据 shortKey 路由到对应命令
       insert: (ctx, shortKey) => {
-        const commands = ctx.get(commandsCtx);
+        const commands = ctx.get('commands');
         switch (shortKey) {
           case 'hr':
-            return commands.call(insertHrCommand.key);
+            return commands.call('InsertHr');
           case 'br':
-            return commands.call(insertHardbreakCommand.key);
+            return commands.call('InsertHardbreak');
           case 'code':
-            return commands.call(createCodeBlockCommand.key);
+            return commands.call('CreateCodeBlock');
           case 'link':
-            return commands.call(toggleLinkCommand.key, { href: '' });
+            return commands.call('ToggleLink', { href: '' });
           default:
             // table/image/formula/checklist 等需要特殊 UI 交互，返回 false
             return false;
@@ -103,57 +74,57 @@ export function createWysiwygCommandMap() {
       // 颜色按钮：从 shortKey 中解析颜色类型和值
       color: (ctx, shortKey) => {
         if (!shortKey || !/(color|background-color)\s*:/.test(shortKey)) return false;
-        const commands = ctx.get(commandsCtx);
+        const commands = ctx.get('commands');
         const isBg = /background-color\s*:/.test(shortKey);
         const color = shortKey.replace(/(color|background-color)\s*:\s*([#0-9a-zA-Z]+).*$/, '$2').trim();
         if (isBg) {
-          return commands.call(toggleBgColorCommand.key, color);
+          return commands.call('ToggleBgColor', color);
         }
-        return commands.call(toggleFontColorCommand.key, color);
+        return commands.call('ToggleFontColor', color);
       },
       // 字号按钮：从 shortKey 中解析字号值
       size: (ctx, shortKey) => {
         if (!shortKey || !/^[0-9]+$/.test(shortKey)) return false;
-        const commands = ctx.get(commandsCtx);
-        return commands.call(toggleFontSizeCommand.key, shortKey);
+        const commands = ctx.get('commands');
+        return commands.call('ToggleFontSize', shortKey);
       },
       // 注音按钮：插入 ruby inline node
       ruby: (ctx, shortKey) => {
-        const commands = ctx.get(commandsCtx);
-        const view = ctx.get(editorViewCtx);
+        const commands = ctx.get('commands');
+        const view = ctx.get('editorView');
         const { state } = view;
         const { from, to } = state.selection;
         const selectedText = state.doc.textBetween(from, to) || '拼音';
         const annotation = shortKey || 'pīn yīn';
-        return commands.call(insertRubyCommand.key, { text: selectedText, annotation });
+        return commands.call('InsertRuby', { text: selectedText, annotation });
       },
       // 面板按钮：包裹选中内容为 panel 节点
       panel: (ctx, shortKey) => {
-        const commands = ctx.get(commandsCtx);
-        return commands.call(insertPanelCommand.key, shortKey || 'primary');
+        const commands = ctx.get('commands');
+        return commands.call('InsertPanel', shortKey || 'primary');
       },
       // 手风琴按钮：包裹选中内容为 detail 节点
       detail: (ctx, shortKey) => {
-        const commands = ctx.get(commandsCtx);
-        return commands.call(insertDetailCommand.key, shortKey || '');
+        const commands = ctx.get('commands');
+        return commands.call('InsertDetail', shortKey || '');
       },
       // 脚注按钮：在光标处插入引用 + 文档末尾插入定义
       footnote: (ctx, shortKey) => {
-        const commands = ctx.get(commandsCtx);
-        return commands.call(insertFootnoteCommand.key, { label: shortKey || '' });
+        const commands = ctx.get('commands');
+        return commands.call('InsertFootnote', { label: shortKey || '' });
       },
       // 目录按钮：插入 [[toc]] 块
       toc: (ctx) => {
-        const commands = ctx.get(commandsCtx);
-        return commands.call(insertTocCommand.key);
+        const commands = ctx.get('commands');
+        return commands.call('InsertToc');
       },
       // 图片按钮：接收 JSON 数据插入 cherry_image 节点
       image: (ctx, shortKey) => {
         if (!shortKey) return false;
         try {
           const data = JSON.parse(shortKey);
-          const commands = ctx.get(commandsCtx);
-          return commands.call(insertCherryImageCommand.key, data);
+          const commands = ctx.get('commands');
+          return commands.call('InsertCherryImage', data);
         } catch (e) {
           return false;
         }
@@ -163,15 +134,15 @@ export function createWysiwygCommandMap() {
         if (!shortKey) return false;
         try {
           const data = JSON.parse(shortKey);
-          const commands = ctx.get(commandsCtx);
-          return commands.call(insertDrawioCommand.key, data);
+          const commands = ctx.get('commands');
+          return commands.call('InsertDrawio', data);
         } catch (e) {
           return false;
         }
       },
       checklist: (ctx) => {
-        const commands = ctx.get(commandsCtx);
-        const view = ctx.get(editorViewCtx);
+        const commands = ctx.get('commands');
+        const view = ctx.get('editorView');
         const { state, dispatch } = view;
         const { $from } = state.selection;
 
@@ -202,9 +173,9 @@ export function createWysiwygCommandMap() {
         }
 
         // 不在列表中 — 通过 Milkdown 命令创建带 checked 属性的任务列表
-        const listItem = listItemSchema.type(ctx);
-        commands.call(clearTextInCurrentBlockCommand.key);
-        commands.call(wrapInBlockTypeCommand.key, {
+        const listItem = view.state.schema.nodes.list_item;
+        commands.call('ClearTextInCurrentBlock');
+        commands.call('WrapInBlockType', {
           nodeType: listItem,
           attrs: { checked: false },
         });
