@@ -74,7 +74,34 @@ export const fontColorSchema = $markSchema(MARK_NAME, () => ({
 }));
 
 export const toggleFontColorCommand = $command('ToggleFontColor', (ctx) => (color) =>
-  toggleMark(fontColorSchema.type(ctx), color ? { color } : undefined),
+  (state, dispatch) => {
+    const markType = fontColorSchema.type(ctx);
+    const { from, to, empty } = state.selection;
+    // 检查选区内是否已有相同颜色的 mark
+    let hasSameColor = false;
+    if (!empty) {
+      state.doc.nodesBetween(from, to, (node) => {
+        if (hasSameColor) return false;
+        if (node.isText) {
+          const existing = markType.isInSet(node.marks);
+          if (existing && existing.attrs.color === color) hasSameColor = true;
+        }
+      });
+    }
+    if (hasSameColor) {
+      // 相同颜色 → 移除（toggle off）
+      return toggleMark(markType)(state, dispatch);
+    }
+    // 不同颜色或无 mark → 先移除旧的再添加新的
+    if (!dispatch) return true;
+    const tr = state.tr;
+    if (!empty) {
+      tr.removeMark(from, to, markType);
+      if (color) tr.addMark(from, to, markType.create({ color }));
+    }
+    dispatch(tr.scrollIntoView());
+    return true;
+  },
 );
 
 export const fontColor = [remarkFontColorPlugin, fontColorSchema, toggleFontColorCommand].flat();

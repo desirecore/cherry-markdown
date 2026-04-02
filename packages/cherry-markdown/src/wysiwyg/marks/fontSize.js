@@ -78,7 +78,31 @@ export const fontSizeSchema = $markSchema(MARK_NAME, () => ({
 }));
 
 export const toggleFontSizeCommand = $command('ToggleFontSize', (ctx) => (size) =>
-  toggleMark(fontSizeSchema.type(ctx), size ? { size } : undefined),
+  (state, dispatch) => {
+    const markType = fontSizeSchema.type(ctx);
+    const { from, to, empty } = state.selection;
+    let hasSameSize = false;
+    if (!empty) {
+      state.doc.nodesBetween(from, to, (node) => {
+        if (hasSameSize) return false;
+        if (node.isText) {
+          const existing = markType.isInSet(node.marks);
+          if (existing && existing.attrs.size === size) hasSameSize = true;
+        }
+      });
+    }
+    if (hasSameSize) {
+      return toggleMark(markType)(state, dispatch);
+    }
+    if (!dispatch) return true;
+    const tr = state.tr;
+    if (!empty) {
+      tr.removeMark(from, to, markType);
+      if (size) tr.addMark(from, to, markType.create({ size }));
+    }
+    dispatch(tr.scrollIntoView());
+    return true;
+  },
 );
 
 export const fontSize = [remarkFontSizePlugin, fontSizeSchema, toggleFontSizeCommand].flat();

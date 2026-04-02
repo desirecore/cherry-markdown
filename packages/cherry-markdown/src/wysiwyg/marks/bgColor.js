@@ -73,7 +73,31 @@ export const bgColorSchema = $markSchema(MARK_NAME, () => ({
 }));
 
 export const toggleBgColorCommand = $command('ToggleBgColor', (ctx) => (color) =>
-  toggleMark(bgColorSchema.type(ctx), color ? { color } : undefined),
+  (state, dispatch) => {
+    const markType = bgColorSchema.type(ctx);
+    const { from, to, empty } = state.selection;
+    let hasSameColor = false;
+    if (!empty) {
+      state.doc.nodesBetween(from, to, (node) => {
+        if (hasSameColor) return false;
+        if (node.isText) {
+          const existing = markType.isInSet(node.marks);
+          if (existing && existing.attrs.color === color) hasSameColor = true;
+        }
+      });
+    }
+    if (hasSameColor) {
+      return toggleMark(markType)(state, dispatch);
+    }
+    if (!dispatch) return true;
+    const tr = state.tr;
+    if (!empty) {
+      tr.removeMark(from, to, markType);
+      if (color) tr.addMark(from, to, markType.create({ color }));
+    }
+    dispatch(tr.scrollIntoView());
+    return true;
+  },
 );
 
 export const bgColor = [remarkBgColorPlugin, bgColorSchema, toggleBgColorCommand].flat();
