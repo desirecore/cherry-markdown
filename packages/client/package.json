@@ -11,22 +11,22 @@
     "lint:fix": "cd ../.. && npx prettier --write packages/client/src/**/*.{ts,vue} && npx eslint packages/client/src/**/*.{ts,vue} --fix"
   },
   "dependencies": {
-    "@tauri-apps/api": "2.2.0",
-    "@tauri-apps/plugin-dialog": "2.2.0",
-    "@tauri-apps/plugin-fs": "2.2.0",
-    "@tauri-apps/plugin-global-shortcut": "^2.3.1",
-    "@tauri-apps/plugin-opener": "2.2.0",
+    "@tauri-apps/api": "2.11.1",
+    "@tauri-apps/plugin-dialog": "2.7.1",
+    "@tauri-apps/plugin-fs": "2.5.1",
+    "@tauri-apps/plugin-global-shortcut": "^2.3.2",
+    "@tauri-apps/plugin-opener": "2.5.4",
     "cherry-markdown": "*",
-    "echarts": "^6.0.0",
-    "katex": "^0.16.27",
+    "echarts": "^6.1.0",
+    "katex": "^0.16.47",
     "pinyin": "^4.0.0",
     "pinia": "^3.0.4",
-    "vue": "^3.5.13"
+    "vue": "^3.5.38"
   },
   "devDependencies": {
-    "@tauri-apps/cli": "2.2.5",
-    "@vitejs/plugin-vue": "^5.2.1",
-    "vite": "^6.4.1",
-    "vue-tsc": "^3.2.2"
+    "@tauri-apps/cli": "2.11.3",
+    "@vitejs/plugin-vue": "^5.2.4",
+    "vite": "^6.4.3",
+    "vue-tsc": "^3.3.5"
   }
 }

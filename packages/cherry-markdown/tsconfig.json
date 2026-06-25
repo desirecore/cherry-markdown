@@ -13,12 +13,22 @@
     "outDir": "dist/types",
     "target": "ES5",
     "skipLibCheck": true,
+    // Only auto-load Node ambient types (for `process.env` in source). Prevents tsc from
+    // implicitly pulling unrelated transitive @types (e.g. mermaid's @types/d3, @types/minimatch)
+    // which can fail to parse under this package's pinned TypeScript and break d.ts generation.
+    "types": ["node"],
     "paths": {
       "@/*": [
         "src/*"
       ],
       "~types/*": [
         "types/*"
+      ],
+      // Redirect mermaid's type import to a local stub during d.ts generation;
+      // its real types pull modern @types/d3 syntax that the pinned TS 4.7.2 can't parse.
+      // Runtime bundling (Rollup) is unaffected and uses the real mermaid package.
+      "mermaid": [
+        "types/mermaid.d.ts"
       ],
     },
     "resolveJsonModule": true,
