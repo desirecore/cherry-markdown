@@ -93,6 +93,150 @@ export default class CommentReference extends ParagraphBase {
     return backslashCount % 2 === 0;
   }
 
+  getBracketPairs(str) {
+    const pairs = new Map();
+    const stack = [];
+    for (let index = 0; index < str.length; index += 1) {
+      if (str[index] === '\\') {
+        index += 1;
+      } else if (str[index] === '\n') {
+        stack.length = 0;
+      } else if (str[index] === '[') {
+        stack.push(index);
+      } else if (str[index] === ']' && stack.length > 0) {
+        pairs.set(stack.pop(), index);
+      }
+    }
+    return pairs;
+  }
+
+  isInlineLinkDestination(str, labelEnd) {
+    let destinationStart = labelEnd + 1;
+    while (str[destinationStart] === ' ' || str[destinationStart] === '\t') {
+      destinationStart += 1;
+    }
+    // Keep this grammar in lockstep with Link.RULE: empty destinations and
+    // destinations containing unquoted whitespace are not consumed by Link,
+    // so they must remain eligible for the existing shortcut-reference path.
+    return /^\(((?:[^\s()]*\([^\s()]*\)[^\s()]*)+|[^\s)]+)(?:[ \t]((?:".*?")|(?:'.*?')))?\)/.test(
+      str.slice(destinationStart),
+    );
+  }
+
+  hasCommentReference(key) {
+    return Object.prototype.hasOwnProperty.call(this.commentCache, `${key}`.toLowerCase());
+  }
+
+  findNestedLinkStart(str, start, end, pairs) {
+    for (let index = start + 1; index < end; index += 1) {
+      const labelEnd = pairs.get(index);
+      if (typeof labelEnd === 'undefined' || labelEnd >= end) {
+        continue;
+      }
+      const isImage = this.isImageReference(str, index);
+      if (isImage && str[labelEnd + 1] !== '[') {
+        continue;
+      }
+      if (this.isInlineLinkDestination(str, labelEnd)) {
+        return { index, isImageReference: isImage };
+      }
+      if (str[labelEnd + 1] === '[') {
+        const referenceEnd = pairs.get(labelEnd + 1);
+        if (typeof referenceEnd !== 'undefined' && referenceEnd < end) {
+          const label = str.slice(index + 1, labelEnd);
+          const key = str.slice(labelEnd + 2, referenceEnd) || label;
+          if (this.hasCommentReference(key)) {
+            return { index, isImageReference: isImage };
+          }
+        }
+      }
+    }
+    return -1;
+  }
+
+  replaceReferences(str) {
+    const pairs = this.getBracketPairs(str);
+    const frames = [{ end: str.length, index: 0, output: '', cache: null, referenceEnd: -1 }];
+
+    while (frames.length > 0) {
+      const frame = frames[frames.length - 1];
+      if (frame.index >= frame.end) {
+        frames.pop();
+        if (frames.length === 0) {
+          return frame.output;
+        }
+        const parent = frames[frames.length - 1];
+        parent.output += `[${frame.output}](${frame.cache})`;
+        parent.index = frame.referenceEnd + 1;
+        continue;
+      }
+
+      if (str[frame.index] !== '[') {
+        frame.output += str[frame.index];
+        frame.index += 1;
+        continue;
+      }
+
+      const textEnd = pairs.get(frame.index);
+      if (typeof textEnd === 'undefined' || textEnd >= frame.end) {
+        frame.output += str[frame.index];
+        frame.index += 1;
+        continue;
+      }
+
+      const label = str.slice(frame.index + 1, textEnd);
+      let key = label;
+      let referenceEnd = textEnd;
+      const nextChar = str[textEnd + 1];
+      if (this.isInlineLinkDestination(str, textEnd)) {
+        frame.output += str.slice(frame.index, textEnd + 1);
+        frame.index = textEnd + 1;
+        continue;
+      }
+      if (nextChar === '[') {
+        const candidateEnd = pairs.get(textEnd + 1);
+        // [text][key](url) is the existing prefix-plus-inline-link form,
+        // not a reference expression.
+        if (typeof candidateEnd === 'undefined' || this.isInlineLinkDestination(str, candidateEnd)) {
+          frame.output += str.slice(frame.index, textEnd + 1);
+          frame.index = textEnd + 1;
+          continue;
+        }
+        key = str.slice(textEnd + 2, candidateEnd) || label;
+        referenceEnd = candidateEnd;
+      }
+
+      const nestedLinkStart = this.findNestedLinkStart(str, frame.index, textEnd, pairs);
+      if (nestedLinkStart !== -1) {
+        const cache = this.getCommentReferenceCache(key, this.isImageReference(str, frame.index));
+        if (nestedLinkStart.isImageReference && cache) {
+          frames.push({
+            end: textEnd,
+            index: frame.index + 1,
+            output: '',
+            cache,
+            referenceEnd,
+          });
+          continue;
+        }
+        frame.output += str.slice(frame.index, nestedLinkStart.index);
+        frame.index = nestedLinkStart.index;
+        continue;
+      }
+
+      const cache = this.getCommentReferenceCache(key, this.isImageReference(str, frame.index));
+      if (cache) {
+        frame.output += `${str.slice(frame.index, textEnd + 1)}(${cache})`;
+        frame.index = referenceEnd + 1;
+        continue;
+      }
+
+      frame.output += str.slice(frame.index, referenceEnd + 1);
+      frame.index = referenceEnd + 1;
+    }
+    return str;
+  }
+
   /**
    *
    * @param {string} str
@@ -107,17 +251,7 @@ export default class CommentReference extends ParagraphBase {
         return lineFeeds.join('');
       });
       // 替换实际引用
-      const refRegex = /(\[[^\]]*?\])?(?:\[([^\]\n]+?)\])/g; // 匹配[xxx][ref]形式的内容，不严格大小写
-      $str = $str.replace(refRegex, (match, leadingContent, key, offset, source) => {
-        const cache = this.getCommentReferenceCache(key, this.isImageReference(source, offset));
-        if (cache) {
-          if (leadingContent) {
-            return `${leadingContent}(${cache})`; // 替换为[xx](cache)形式，交给Link或多媒体标签处理
-          }
-          return `[${key}](${cache})`; // 替换为[ref](cache)形式，交给Link或多媒体标签处理
-        }
-        return match;
-      });
+      $str = this.replaceReferences($str);
       this.$cleanCache();
     }
     return $str;
