@@ -59,15 +59,38 @@ export default class CommentReference extends ParagraphBase {
   pushCommentReferenceCache(key, cache) {
     const [url, ...args] = cache.split(/[ ]+/g);
     const unwrappedUrl = this.unwrapUrl(url);
-    if (!isValidScheme(unwrappedUrl)) {
-      return;
-    }
-    const innerUrl = UrlCache.set(unwrappedUrl);
-    this.commentCache[`${key}`.toLowerCase()] = [innerUrl, ...args].join(' ');
+    this.commentCache[`${key}`.toLowerCase()] = { url: unwrappedUrl, args };
   }
 
-  getCommentReferenceCache(key) {
-    return this.commentCache[`${key}`.toLowerCase()] || null;
+  getCommentReferenceCache(key, isImage) {
+    /** @type {{url: string, args: string[]} | undefined} */
+    const reference = this.commentCache[`${key}`.toLowerCase()];
+    if (!reference) {
+      return null;
+    }
+    // The definition is shared by links and images.  Validate it only once we
+    // know the consumer: `data:` must never become a clickable link, while a
+    // FileReader-generated raster image remains a supported image source.
+    const originalUrl = this.$engine?.$deCacheBigData?.(reference.url) ?? reference.url;
+    if (!isValidScheme(originalUrl) && !(isImage && this.isSafeDataImage(originalUrl))) {
+      return null;
+    }
+    return [UrlCache.set(reference.url), ...reference.args].join(' ');
+  }
+
+  isSafeDataImage(url) {
+    return /^data:image\/(?:apng|gif|jpe?g|png|webp);base64,[a-z0-9+/=\s]*$/i.test(url);
+  }
+
+  isImageReference(source, offset) {
+    if (source[offset - 1] !== '!') {
+      return false;
+    }
+    let backslashCount = 0;
+    for (let index = offset - 2; source[index] === '\\'; index -= 1) {
+      backslashCount += 1;
+    }
+    return backslashCount % 2 === 0;
   }
 
   /**
@@ -85,8 +108,8 @@ export default class CommentReference extends ParagraphBase {
       });
       // 替换实际引用
       const refRegex = /(\[[^\]]*?\])?(?:\[([^\]\n]+?)\])/g; // 匹配[xxx][ref]形式的内容，不严格大小写
-      $str = $str.replace(refRegex, (match, leadingContent, key) => {
-        const cache = this.getCommentReferenceCache(key);
+      $str = $str.replace(refRegex, (match, leadingContent, key, offset, source) => {
+        const cache = this.getCommentReferenceCache(key, this.isImageReference(source, offset));
         if (cache) {
           if (leadingContent) {
             return `${leadingContent}(${cache})`; // 替换为[xx](cache)形式，交给Link或多媒体标签处理

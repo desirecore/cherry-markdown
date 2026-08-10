@@ -30,8 +30,11 @@ echo "==> Cleaning dist..."
 cd "$PKG_DIR"
 npx rimraf ./dist
 
-echo "==> Building (skipping types)..."
-npx run-p iconfont build:styles build:addons build:full build:core build:engine build:engine-full build:stream build:wysiwyg
+echo "==> Building release artifacts..."
+npx run-p iconfont build:styles build:types build:addons build:full build:core build:engine build:engine-full build:stream build:wysiwyg
+
+echo "==> Verifying declared type entrypoint..."
+test -f dist/types/index.d.ts
 
 echo "==> Copying engine type declarations..."
 cp dist/super-doc.engine.core.d.ts dist/super-doc.engine.d.ts

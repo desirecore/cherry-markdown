@@ -80,8 +80,10 @@ export default class InlineMath extends ParagraphBase {
       try {
         svg = getHTML(this.MathJax.tex2svg($m1, { em: 12, ex: 6, display: false }), true);
       } catch (error) {
-        if (this.isSelfClosing()) {
+        if (this.isSelfClosing() && this.lastCode) {
           svg = this.lastCode;
+        } else {
+          svg = `$${escapeFormulaPunctuations($m1)}$`;
         }
       }
       if (this.isSelfClosing()) {

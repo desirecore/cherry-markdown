@@ -89,8 +89,10 @@ export default class MathBlock extends ParagraphBase {
       try {
         svg = getHTML(this.MathJax.tex2svg($content), true);
       } catch (error) {
-        if (this.isSelfClosing()) {
+        if (this.isSelfClosing() && this.lastCode) {
           svg = this.lastCode;
+        } else {
+          svg = `$$${escapeFormulaPunctuations($content)}$$`;
         }
       }
       if (this.isSelfClosing()) {

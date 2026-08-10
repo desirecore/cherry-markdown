@@ -53,6 +53,31 @@ describe('ported upstream regressions', () => {
       },
     );
 
+    it.each(['![logo][image]', '![image]', '![image][]'])(
+      'allows safe raster data URLs in a reference-style image (%s)',
+      (markdown) => {
+        const png = 'data:image/png;base64,iVBORw0KGgo=';
+        const safeHtml = createEngine().makeHtml(`${markdown}\n\n[image]: ${png}`);
+
+        expect(safeHtml).toContain(`<img src="${png}"`);
+        expect(safeHtml).not.toContain(`<a href="${png}"`);
+      },
+    );
+
+    it('does not treat an escaped image reference as a data-image consumer', () => {
+      const png = 'data:image/png;base64,iVBORw0KGgo=';
+      const escapedHtml = createEngine().makeHtml(`\\![image]\n\n[image]: ${png}`);
+      const unsafeHtml = createEngine().makeHtml(
+        '![vector][image]\n\n[image]: data:image/svg+xml;base64,PHN2Zz48L3N2Zz4=',
+      );
+
+      expect(escapedHtml).not.toContain('<img ');
+      expect(escapedHtml).not.toContain(`<a href="${png}"`);
+      expect(escapedHtml).toContain('![image]');
+      expect(unsafeHtml).not.toContain('<img ');
+      expect(unsafeHtml).toContain('![vector][image]');
+    });
+
     it('still renders safe reference-style links', () => {
       const html = createEngine().makeHtml('[guide][docs]\n\n[docs]: https://example.com/guide');
 
@@ -193,6 +218,20 @@ describe('ported upstream regressions', () => {
       expect(host.textContent).toContain('row-149');
     });
 
+    it('preserves a long HTML container around markdown paragraphs', () => {
+      const paragraphs = Array.from(
+        { length: 120 },
+        (_, index) => `<p data-sign="paragraph-${index}">paragraph-${index}</p>`,
+      ).join('\n');
+      const html = createEngine().makeHtml(`<div class="outer">\n${paragraphs}\n</div>`);
+      const host = document.createElement('div');
+      host.innerHTML = html;
+
+      const outer = host.querySelector('.outer');
+      expect(outer?.querySelectorAll('p[data-sign]')).toHaveLength(120);
+      expect(outer?.textContent).toContain('paragraph-119');
+    });
+
     it('continues rendering when MathJax rejects block and inline formulas', () => {
       const MathJax = {
         tex2svg: vi.fn(() => {
@@ -209,8 +248,14 @@ describe('ported upstream regressions', () => {
         },
       }) as any;
 
-      expect(() => engine.makeHtml('$$\ninvalid block\n$$\n\n$invalid inline$')).not.toThrow();
+      const html = engine.makeHtml('$$\ninvalid <img src=x onerror=alert(1)>\n$$\n\n$invalid inline$');
+      const host = document.createElement('div');
+      host.innerHTML = html;
+
       expect(MathJax.tex2svg).toHaveBeenCalled();
+      expect(html).toContain('$$invalid &lt;img src=x onerror=alert(1)&gt;$$');
+      expect(html).toContain('$invalid inline$');
+      expect(host.querySelector('img')).toBeNull();
     });
 
     it('removes the stream cursor placeholder from chart data only', () => {

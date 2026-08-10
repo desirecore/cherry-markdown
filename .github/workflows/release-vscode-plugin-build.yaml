@@ -18,19 +18,15 @@ jobs:
       - name: Change Package Files
         run: |
 
-          tmp=$(mktemp) && jq '.scripts["build"] = "yarn workspace cherry-markdown-core build" | .scripts["build:vscodePlugin"] = "yarn workspace cherry-markdown build"' package.json > "$tmp" && mv "$tmp" package.json
+          tmp=$(mktemp) && jq '.scripts["build"] = "yarn workspace @desirecore/super-doc build" | .scripts["build:vscodePlugin"] = "yarn workspace cherry-markdown build"' package.json > "$tmp" && mv "$tmp" package.json
 
-          cd packages/cherry-markdown
-          tmp=$(mktemp) && jq '.name = "cherry-markdown-core"' package.json > "$tmp" && mv "$tmp" package.json
-
-          cd ../vscodePlugin
-          tmp=$(mktemp) && jq '.dependencies["cherry-markdown-core"] = .dependencies["cherry-markdown"] | del(.dependencies["cherry-markdown"])' package.json > "$tmp" && mv "$tmp" package.json
+          cd packages/vscodePlugin
           tmp=$(mktemp) && jq '.name = "cherry-markdown"' package.json > "$tmp" && mv "$tmp" package.json
 
       - name: Install and Build Dependencies
         run: |
           yarn global add vsce
-          yarn --network-timeout 100000
+          yarn --frozen-lockfile --network-timeout 100000
           yarn build
           yarn build:vscodePlugin
 
