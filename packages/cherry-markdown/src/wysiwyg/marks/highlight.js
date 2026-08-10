@@ -52,17 +52,10 @@ export const highlightSchema = $markSchema(MARK_NAME, () => ({
   },
 }));
 
-export const toggleHighlightCommand = $command('ToggleHighlight', (ctx) => () =>
-  toggleMark(highlightSchema.type(ctx)),
-);
+export const toggleHighlightCommand = $command('ToggleHighlight', (ctx) => () => toggleMark(highlightSchema.type(ctx)));
 
 export const highlightInputRule = $inputRule((ctx) =>
-  markRule(/(?<!=)(==)([^\s=](?:[^=]*[^\s=])?)(==)(?!=)/, highlightSchema.type(ctx)),
+  markRule(new RegExp('(?<!=)(==)([^\\s=](?:[^=]*[^\\s=])?)(==)(?!=)'), highlightSchema.type(ctx)),
 );
 
-export const highlight = [
-  remarkHighlightPlugin,
-  highlightSchema,
-  toggleHighlightCommand,
-  highlightInputRule,
-].flat();
+export const highlight = [remarkHighlightPlugin, highlightSchema, toggleHighlightCommand, highlightInputRule].flat();

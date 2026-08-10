@@ -48,12 +48,7 @@ function parseAltExtensions(rawAlt) {
   const decorations = decos.map((d) => d.replace('#', '')).join(' ');
 
   // Strip all # extensions from alt to get pure text
-  let alt = rawAlt
-    .replace(SIZE_REGEX, '')
-    .replace(ALIGN_REGEX, '')
-    .replace(DECO_REGEX, '')
-    .replace(/#+$/, '')
-    .trim();
+  let alt = rawAlt.replace(SIZE_REGEX, '').replace(ALIGN_REGEX, '').replace(DECO_REGEX, '').replace(/#+$/, '').trim();
 
   return { alt, width, height, alignment, decorations };
 }
@@ -274,18 +269,21 @@ export const cherryImageSchema = $nodeSchema(NODE_NAME, () => ({
 
 // --- Insert Command ---
 
-export const insertCherryImageCommand = $command('InsertCherryImage', () => ({ src, alt, title } = {}) =>
-  (state, dispatch) => {
-    const imageType = state.schema.nodes[NODE_NAME];
-    if (!imageType) return false;
-    const node = imageType.create({
-      src: src || '',
-      alt: alt || '',
-      title: title || '',
-    });
-    dispatch?.(state.tr.replaceSelectionWith(node));
-    return true;
-  },
+export const insertCherryImageCommand = $command(
+  'InsertCherryImage',
+  () =>
+    ({ src, alt, title } = /** @type {any} */ ({})) =>
+    (state, dispatch) => {
+      const imageType = state.schema.nodes[NODE_NAME];
+      if (!imageType) return false;
+      const node = imageType.create({
+        src: src || '',
+        alt: alt || '',
+        title: title || '',
+      });
+      dispatch?.(state.tr.replaceSelectionWith(node));
+      return true;
+    },
 );
 
 // --- NodeView ---
@@ -587,6 +585,7 @@ export const cherryImageView = $view(cherryImageSchema.node, () => (initialNode,
       hideBubble();
     },
     stopEvent(event) {
+      const target = event.target instanceof Element ? event.target : null;
       // During resize, block all events to prevent ProseMirror drag interference
       if (imgSizeHandler.$isResizing()) {
         return true;
@@ -597,15 +596,15 @@ export const cherryImageView = $view(cherryImageSchema.node, () => (initialNode,
         return true;
       }
       // Allow mouse events on resize handles
-      if (event.target.classList.contains('cherry-previewer-img-size-handler__points')) {
+      if (target?.classList.contains('cherry-previewer-img-size-handler__points')) {
         return true;
       }
       // Allow clicks on tool buttons
-      if (event.target.closest('.cherry-previewer-img-tool-handler')) {
+      if (target?.closest('.cherry-previewer-img-tool-handler')) {
         return true;
       }
       // Allow editing in caption
-      if (event.target === caption || event.target.closest('.cherry-wysiwyg-image-caption')) {
+      if (target === caption || target?.closest('.cherry-wysiwyg-image-caption')) {
         return true;
       }
       return false;
@@ -620,19 +619,22 @@ export const cherryImageView = $view(cherryImageSchema.node, () => (initialNode,
 
 const cherryImagePluginKey = new PluginKey('cherry-image-bubble');
 
-export const cherryImageBubblePlugin = $prose(() => new Plugin({
-  key: cherryImagePluginKey,
-  props: {
-    handleClick(view, pos, event) {
-      // If click is not on a cherry image, dismiss any active bubble
-      const node = view.state.doc.nodeAt(pos);
-      if (!node || node.type.name !== NODE_NAME) {
-        dismissActiveBubble();
-      }
-      return false;
-    },
-  },
-}));
+export const cherryImageBubblePlugin = $prose(
+  () =>
+    new Plugin({
+      key: cherryImagePluginKey,
+      props: {
+        handleClick(view, pos, event) {
+          // If click is not on a cherry image, dismiss any active bubble
+          const node = view.state.doc.nodeAt(pos);
+          if (!node || node.type.name !== NODE_NAME) {
+            dismissActiveBubble();
+          }
+          return false;
+        },
+      },
+    }),
+);
 
 // --- Export ---
 

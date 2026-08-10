@@ -52,17 +52,10 @@ export const subscriptSchema = $markSchema(MARK_NAME, () => ({
   },
 }));
 
-export const toggleSubscriptCommand = $command('ToggleSubscript', (ctx) => () =>
-  toggleMark(subscriptSchema.type(ctx)),
-);
+export const toggleSubscriptCommand = $command('ToggleSubscript', (ctx) => () => toggleMark(subscriptSchema.type(ctx)));
 
 export const subscriptInputRule = $inputRule((ctx) =>
-  markRule(/(?<!\^)(\^\^)([^\s^](?:[^^]*[^\s^])?)(\^\^)(?!\^)/, subscriptSchema.type(ctx)),
+  markRule(new RegExp('(?<!\\^)(\\^\\^)([^\\s^](?:[^^]*[^\\s^])?)(\\^\\^)(?!\\^)'), subscriptSchema.type(ctx)),
 );
 
-export const subscript = [
-  remarkSubscriptPlugin,
-  subscriptSchema,
-  toggleSubscriptCommand,
-  subscriptInputRule,
-].flat();
+export const subscript = [remarkSubscriptPlugin, subscriptSchema, toggleSubscriptCommand, subscriptInputRule].flat();

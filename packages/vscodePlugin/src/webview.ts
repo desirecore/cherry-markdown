@@ -22,10 +22,10 @@ export function getWebviewContent(mdInfo: object, currentPanel: vscode.WebviewPa
       vscode.Uri.file(path.join(extensionPath, 'web-resources/index.css')),
     ),
     'cherry-markdown.css': currentPanel.webview.asWebviewUri(
-      vscode.Uri.file(path.join(extensionPath, 'web-resources/dist/cherry-markdown.min.css')),
+      vscode.Uri.file(path.join(extensionPath, 'web-resources/dist/super-doc.min.css')),
     ),
     'cherry-markdown.js': currentPanel.webview.asWebviewUri(
-      vscode.Uri.file(path.join(extensionPath, 'web-resources/dist/cherry-markdown.min.js')),
+      vscode.Uri.file(path.join(extensionPath, 'web-resources/dist/super-doc.js')),
     ),
     'scripts/pinyin/pinyin_dist.js': currentPanel.webview.asWebviewUri(
       vscode.Uri.file(path.join(extensionPath, 'web-resources/scripts/pinyin/pinyin_dist.js')),

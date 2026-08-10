@@ -37,17 +37,20 @@ export default class Image extends MenuBase {
   /**
    * 响应点击事件
    * @param {string} selection 被用户选中的文本内容
-   * @returns {string} 回填到编辑器光标位置/选中文本区域的内容
+   * @returns {string | false} 回填到编辑器光标位置/选中文本区域的内容
    */
   onClick(selection, shortKey = '') {
     // WYSIWYG 模式：使用 cherry_image 自定义节点
     if (this.$cherry.status?.wysiwyg === 'show' && this.$cherry.wysiwygEditor) {
       const accept = this.$cherry.options?.fileTypeLimitMap?.image ?? '*';
       handleUpload(this.editor, 'image', accept, (name, url, params) => {
-        this.$cherry.wysiwygEditor.execCommand('image', JSON.stringify({
-          src: url,
-          alt: params.name || name,
-        }));
+        this.$cherry.wysiwygEditor.execCommand(
+          'image',
+          JSON.stringify({
+            src: url,
+            alt: params.name || name,
+          }),
+        );
       });
       return false;
     }

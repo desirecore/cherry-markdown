@@ -21,8 +21,6 @@ export default {
   groupStyles: '样式',
   paste: '粘贴',
   pasteDefault: '智能粘贴',
-  pastePlain: '粘贴为纯文本',
-  pasteMarkdown: '粘贴为 Markdown',
   cut: '剪切',
   copySelection: '复制',
   tabInsert: '插入',

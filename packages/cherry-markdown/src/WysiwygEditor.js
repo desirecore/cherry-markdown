@@ -276,29 +276,28 @@ export default class WysiwygEditor {
     const map = this.$cherry.options.wysiwyg?.commandMap;
     if (!map) return false;
     try {
-      return this.crepe.editor.action((ctx) => {
-        const view = ctx.get('editorView');
-        const { state, dispatch } = view;
+      return (
+        this.crepe.editor.action((ctx) => {
+          const view = ctx.get('editorView');
+          const { state, dispatch } = view;
 
-        if (isBlock) {
-          // 块级公式：插入 code_block，language 设为 LaTeX
-          const codeBlockType = state.schema.nodes.code_block;
-          if (!codeBlockType) return false;
-          const node = codeBlockType.create(
-            { language: 'LaTeX' },
-            latex ? state.schema.text(latex) : null,
-          );
+          if (isBlock) {
+            // 块级公式：插入 code_block，language 设为 LaTeX
+            const codeBlockType = state.schema.nodes.code_block;
+            if (!codeBlockType) return false;
+            const node = codeBlockType.create({ language: 'LaTeX' }, latex ? state.schema.text(latex) : null);
+            dispatch(state.tr.replaceSelectionWith(node));
+            return true;
+          }
+
+          // 行内公式：插入 math_inline 节点
+          const mathInlineType = state.schema.nodes.math_inline;
+          if (!mathInlineType) return false;
+          const node = mathInlineType.create({ value: latex });
           dispatch(state.tr.replaceSelectionWith(node));
           return true;
-        }
-
-        // 行内公式：插入 math_inline 节点
-        const mathInlineType = state.schema.nodes.math_inline;
-        if (!mathInlineType) return false;
-        const node = mathInlineType.create({ value: latex });
-        dispatch(state.tr.replaceSelectionWith(node));
-        return true;
-      }) !== false;
+        }) !== false
+      );
     } catch (e) {
       Logger.warn('WYSIWYG insertFormula failed', e);
       return false;
@@ -325,12 +324,14 @@ export default class WysiwygEditor {
     const map = this.$cherry.options.wysiwyg?.commandMap;
     if (!map) return false;
     try {
-      return this.crepe.editor.action((ctx) => {
-        const view = ctx.get('editorView');
-        const { state, dispatch } = view;
-        dispatch(state.tr.insertText(text));
-        return true;
-      }) !== false;
+      return (
+        this.crepe.editor.action((ctx) => {
+          const view = ctx.get('editorView');
+          const { state, dispatch } = view;
+          dispatch(state.tr.insertText(text));
+          return true;
+        }) !== false
+      );
     } catch (e) {
       Logger.warn('WYSIWYG insertText failed', e);
       return false;
@@ -348,15 +349,17 @@ export default class WysiwygEditor {
     const map = this.$cherry.options.wysiwyg?.commandMap;
     if (!map) return false;
     try {
-      return this.crepe.editor.action((ctx) => {
-        const view = ctx.get('editorView');
-        const { state, dispatch } = view;
-        const linkMark = state.schema.marks.link?.create({ href });
-        if (!linkMark) return false;
-        const textNode = state.schema.text(text, [linkMark]);
-        dispatch(state.tr.replaceSelectionWith(textNode, false));
-        return true;
-      }) !== false;
+      return (
+        this.crepe.editor.action((ctx) => {
+          const view = ctx.get('editorView');
+          const { state, dispatch } = view;
+          const linkMark = state.schema.marks.link?.create({ href });
+          if (!linkMark) return false;
+          const textNode = state.schema.text(text, [linkMark]);
+          dispatch(state.tr.replaceSelectionWith(textNode, false));
+          return true;
+        }) !== false
+      );
     } catch (e) {
       Logger.warn('WYSIWYG insertLink failed', e);
       return false;
@@ -374,18 +377,17 @@ export default class WysiwygEditor {
     const map = this.$cherry.options.wysiwyg?.commandMap;
     if (!map) return false;
     try {
-      return this.crepe.editor.action((ctx) => {
-        const view = ctx.get('editorView');
-        const { state, dispatch } = view;
-        const codeBlockType = state.schema.nodes.code_block;
-        if (!codeBlockType) return false;
-        const node = codeBlockType.create(
-          { language },
-          content ? state.schema.text(content) : null,
-        );
-        dispatch(state.tr.replaceSelectionWith(node));
-        return true;
-      }) !== false;
+      return (
+        this.crepe.editor.action((ctx) => {
+          const view = ctx.get('editorView');
+          const { state, dispatch } = view;
+          const codeBlockType = state.schema.nodes.code_block;
+          if (!codeBlockType) return false;
+          const node = codeBlockType.create({ language }, content ? state.schema.text(content) : null);
+          dispatch(state.tr.replaceSelectionWith(node));
+          return true;
+        }) !== false
+      );
     } catch (e) {
       Logger.warn('WYSIWYG insertCodeBlock failed', e);
       return false;
@@ -430,14 +432,18 @@ export default class WysiwygEditor {
     if (typeof urlProcessor === 'function') {
       this._urlReverseMap.clear();
       // Match ![alt](url) or ![alt](url "title") outside code fences
-      processed = this._replaceOutsideCodeFence(processed, /!\[([^\]]*)\]\(([^)\s]+)([^)]*)\)/g, (match, alt, url, rest) => {
-        const newUrl = urlProcessor(url, 'image');
-        if (newUrl && newUrl !== url) {
-          this._urlReverseMap.set(newUrl, url);
-          return `![${alt}](${newUrl}${rest})`;
-        }
-        return match;
-      });
+      processed = this._replaceOutsideCodeFence(
+        processed,
+        /!\[([^\]]*)\]\(([^)\s]+)([^)]*)\)/g,
+        (match, alt, url, rest) => {
+          const newUrl = urlProcessor(url, 'image');
+          if (newUrl && newUrl !== url) {
+            this._urlReverseMap.set(newUrl, url);
+            return `![${alt}](${newUrl}${rest})`;
+          }
+          return match;
+        },
+      );
     }
 
     // Strip Cherry link attributes like {target=_blank} that Milkdown doesn't understand
@@ -541,8 +547,7 @@ export default class WysiwygEditor {
       // Panel closing: :::
       // Detail opening: +++[-] title
       // Detail closing: +++
-      const isDelimiter = /^:::\w/.test(trimmed) || /^:::\s*$/.test(trimmed)
-        || /^\+\+\+/.test(trimmed);
+      const isDelimiter = /^:::\w/.test(trimmed) || /^:::\s*$/.test(trimmed) || /^\+\+\+/.test(trimmed);
 
       if (isDelimiter) {
         // Ensure blank line before (if prev line is not blank and not start)
@@ -687,7 +692,14 @@ export default class WysiwygEditor {
    * @param {Function|null} lineTransform 逐行变换函数，返回 string[] 表示拆分行，null 表示不变
    * @returns {string}
    */
-  _replaceOutsideCodeFence(md, pattern, replacer, lineTransform) {
+  /**
+   * @param {string} md
+   * @param {RegExp | null} pattern
+   * @param {((substring: string, ...args: any[]) => string) | null} replacer
+   * @param {((line: string) => string[] | null) | null} [lineTransform]
+   * @returns {string}
+   */
+  _replaceOutsideCodeFence(md, pattern, replacer, lineTransform = null) {
     const lines = md.split('\n');
     const result = [];
     let inCodeFence = false;
@@ -735,7 +747,8 @@ export default class WysiwygEditor {
    * @param {object} crepeOptions Crepe 配置对象（会被原地修改）
    */
   _configureMermaidPreview(crepeOptions) {
-    const mermaidEngine = this.$cherry.options.engine?.syntax?.codeBlock?.customRenderer?.mermaid;
+    const codeBlockConfig = this.$cherry.options.engine?.syntax?.codeBlock;
+    const mermaidEngine = codeBlockConfig && codeBlockConfig.customRenderer?.mermaid;
     if (!mermaidEngine || !mermaidEngine.mermaidAPIRefs) return;
 
     const mermaidAPI = mermaidEngine.mermaidAPIRefs;
@@ -858,22 +871,30 @@ export default class WysiwygEditor {
       const svgDoc = parser.parseFromString(fixedSvg, 'image/svg+xml');
       const svgEl = svgDoc.documentElement;
       if (svgEl.tagName.toLowerCase() === 'svg') {
-        const shadowSvg = document.getElementById(graphId);
+        const shadowSvg = /** @type {SVGGraphicsElement | null} */ (
+          /** @type {unknown} */ (document.getElementById(graphId))
+        );
         let box;
-        if (shadowSvg && shadowSvg.getBBox) {
+        if (shadowSvg && typeof shadowSvg.getBBox === 'function') {
           box = shadowSvg.getBBox();
         }
         if (!svgEl.hasAttribute('viewBox') && box) {
           svgEl.setAttribute('viewBox', `0 0 ${box.width} ${box.height}`);
         }
-        const vb = svgEl.viewBox?.baseVal;
-        if (vb && vb.width > 0) {
-          if (svgEl.getAttribute('width') === '100%') svgEl.setAttribute('width', `${vb.width}`);
-          if (svgEl.getAttribute('height') === '100%') svgEl.setAttribute('height', `${vb.height}`);
+        const viewBox = svgEl.getAttribute('viewBox')?.trim().split(/[ ,]+/).map(Number);
+        const viewBoxWidth = viewBox?.[2];
+        const viewBoxHeight = viewBox?.[3];
+        if (Number.isFinite(viewBoxWidth) && viewBoxWidth > 0) {
+          if (svgEl.getAttribute('width') === '100%') svgEl.setAttribute('width', `${viewBoxWidth}`);
+          if (svgEl.getAttribute('height') === '100%' && Number.isFinite(viewBoxHeight) && viewBoxHeight > 0) {
+            svgEl.setAttribute('height', `${viewBoxHeight}`);
+          }
         }
         finalSvg = svgEl.outerHTML;
       }
-    } catch (_) { /* 解析失败时使用原始 fixedSvg */ }
+    } catch (_) {
+      /* 解析失败时使用原始 fixedSvg */
+    }
 
     const dataUrl = `data:image/svg+xml,${encodeURIComponent(finalSvg)}`;
     return `<img style="max-width:100%;height:auto;" src="${dataUrl}" />`;

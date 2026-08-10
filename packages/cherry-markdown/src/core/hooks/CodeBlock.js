@@ -400,7 +400,8 @@ export default class CodeBlock extends ParagraphBase {
   }
 
   $dealUnclosingCode(str) {
-    const codes = str.match(
+    const strForCount = str.replace(/<!--[\s\S]*?-->/g, (comment) => comment.replace(/`/g, ' '));
+    const codes = strForCount.match(
       /(?:^|\n)(\n*((?:>[\t ]*)*)(?:[^\S\n]*))(`{3,})([^`]*?)(?=CHERRY_FLOW_SESSION_CURSOR|$|\n)/g,
     );
     if (!codes || codes.length <= 0) {

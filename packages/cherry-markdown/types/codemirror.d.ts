@@ -19,4 +19,9 @@ declare module 'codemirror' {
   interface LineHandle {
     height: number;
   }
+
+  interface Editor {
+    on(eventName: 'paste', handler: (instance: Editor, event: ClipboardEvent) => void): void;
+    on(eventName: string, handler: (...args: any[]) => void): void;
+  }
 }

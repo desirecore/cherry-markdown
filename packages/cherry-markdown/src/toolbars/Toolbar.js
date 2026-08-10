@@ -110,11 +110,20 @@ export default class Toolbar {
   init() {
     this.$cherry.$event.on('cleanAllSubMenus', () => this.hideAllSubMenu());
     // 点击任意非下拉菜单区域时，关闭所有子菜单
-    document.addEventListener('click', (e) => {
-      if (this.currentActiveSubMenu && !e.target.closest('.cherry-dropdown') && !e.target.closest('.cherry-toolbar-button')) {
-        this.hideAllSubMenu();
-      }
-    }, true);
+    document.addEventListener(
+      'click',
+      (e) => {
+        const target = e.target instanceof Element ? e.target : null;
+        if (
+          this.currentActiveSubMenu &&
+          !target?.closest('.cherry-dropdown') &&
+          !target?.closest('.cherry-toolbar-button')
+        ) {
+          this.hideAllSubMenu();
+        }
+      },
+      true,
+    );
   }
 
   /**
@@ -260,6 +269,7 @@ export default class Toolbar {
    * @param {Object} [groupOptions] 分组选项
    * @param {boolean} [groupOptions.styleCard] 是否以样式卡片形式渲染
    * @param {boolean|string[]} [groupOptions.showLabel] true=全部显示文字, 数组=指定按钮显示文字
+   * @param {boolean|string[]} [groupOptions.large] true=全部使用大按钮, 数组=指定菜单名
    */
   $renderRibbonButton(container, btnConfig, groupOptions = {}) {
     if (btnConfig === '|') {
@@ -274,8 +284,9 @@ export default class Toolbar {
     // Ribbon 模式：如果 hook 标记了 ribbonFlatten，则平铺子菜单项为独立按钮
     const subConfig = hook.getSubMenuConfig();
     if (hook.ribbonFlatten && subConfig && subConfig.length > 0) {
-      const isRadioGroup = typeof hook.getActiveSubMenuIndex === 'function'
-        && hook.constructor.prototype.hasOwnProperty('getActiveSubMenuIndex');
+      const isRadioGroup =
+        typeof hook.getActiveSubMenuIndex === 'function' &&
+        Object.prototype.hasOwnProperty.call(hook.constructor.prototype, 'getActiveSubMenuIndex');
       const groupBtns = [];
 
       subConfig.forEach((item, idx) => {
@@ -292,25 +303,29 @@ export default class Toolbar {
         }
         if (isRadioGroup) {
           subBtn.dataset.ribbonGroup = name;
-          subBtn.dataset.ribbonIndex = idx;
+          subBtn.dataset.ribbonIndex = String(idx);
           groupBtns.push(subBtn);
         }
-        subBtn.addEventListener('click', (e) => {
-          e.stopPropagation();
-          this.hideAllSubMenu();
-          item.onclick(e);
-          // 单选组：点击后更新选中状态
-          if (isRadioGroup) {
-            // 延迟更新，等 switchModel 完成状态变更
-            requestAnimationFrame(() => {
-              const activeIdx = hook.getActiveSubMenuIndex(null);
-              const activeIndices = Array.isArray(activeIdx) ? activeIdx : [activeIdx];
-              groupBtns.forEach((btn, i) => {
-                btn.classList.toggle('cherry-toolbar-button--selected', activeIndices.includes(i));
+        subBtn.addEventListener(
+          'click',
+          (e) => {
+            e.stopPropagation();
+            this.hideAllSubMenu();
+            item.onclick(e);
+            // 单选组：点击后更新选中状态
+            if (isRadioGroup) {
+              // 延迟更新，等 switchModel 完成状态变更
+              requestAnimationFrame(() => {
+                const activeIdx = hook.getActiveSubMenuIndex(null);
+                const activeIndices = Array.isArray(activeIdx) ? activeIdx : [activeIdx];
+                groupBtns.forEach((btn, i) => {
+                  btn.classList.toggle('cherry-toolbar-button--selected', activeIndices.includes(i));
+                });
               });
-            });
-          }
-        }, false);
+            }
+          },
+          false,
+        );
         container.appendChild(subBtn);
       });
 
@@ -380,10 +395,14 @@ export default class Toolbar {
   $switchRibbonTab(tabName) {
     const container = this.options.dom;
     container.querySelectorAll('.cherry-ribbon-tab').forEach((tab) => {
-      tab.classList.toggle('cherry-ribbon-tab--active', tab.dataset.tabName === tabName);
+      if (tab instanceof HTMLElement) {
+        tab.classList.toggle('cherry-ribbon-tab--active', tab.dataset.tabName === tabName);
+      }
     });
     container.querySelectorAll('.cherry-ribbon-panel').forEach((panel) => {
-      panel.classList.toggle('cherry-ribbon-panel--active', panel.dataset.tabName === tabName);
+      if (panel instanceof HTMLElement) {
+        panel.classList.toggle('cherry-ribbon-panel--active', panel.dataset.tabName === tabName);
+      }
     });
     this.hideAllSubMenu();
   }
@@ -395,9 +414,7 @@ export default class Toolbar {
     const buttons = [];
     const seen = new Set();
     tabs.forEach((tab) => {
-      const allButtons = tab.groups
-        ? tab.groups.flatMap((g) => g.buttons)
-        : (tab.buttons || []);
+      const allButtons = tab.groups ? tab.groups.flatMap((g) => g.buttons) : tab.buttons || [];
       allButtons.forEach((btn) => {
         if (btn === '|') return;
         const name = typeof btn === 'string' ? btn : Object.keys(btn)[0];

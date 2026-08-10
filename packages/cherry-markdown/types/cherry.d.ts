@@ -71,6 +71,24 @@ export interface _CherryOptions<T extends CherryCustomOptions = CherryCustomOpti
   engine: CherryEngineOptions;
   /** 编辑区域配置 */
   editor: CherryEditorOptions;
+  /** HTML/PDF 导出配置 */
+  export: {
+    pdfExporter?: null | (() => Promise<Uint8Array>);
+  };
+  /** 所见即所得模式配置 */
+  wysiwyg: {
+    enabled: boolean;
+    Crepe?: any;
+    replaceAll?: (markdown: string) => (ctx: any) => any;
+    crepeOptions?: Record<string, any>;
+    commandMap?: Record<string, any> | null;
+    customPlugins?: any[] | null;
+  };
+  /** 文件导出适配器 */
+  fileExport: {
+    saveAsFile?: null | ((blob: Blob, fileName: string) => Promise<boolean>);
+    docxConverter?: Function | null;
+  };
   /** 工具栏区域配置 */
   toolbars: CherryToolbarsOptions<T['CustomToolbar']> | undefined;
   // 打开draw.io编辑页的url，如果为空则drawio按钮失效
@@ -347,9 +365,8 @@ export interface CherryEngineOptions {
           changeLang?: boolean; // 是否显示“切换语言”按钮
           expandCode?: boolean; // 是否展开/收起代码块，当代码块行数大于10行时，会自动收起代码块
           selfClosing?: boolean; // 自动闭合，为true时，当md中有奇数个```时，会自动在md末尾追加一个```
-          customRenderer?: {
-            // 自定义语法渲染器
-          };
+          /** 自定义语法渲染器，键为语言名 */
+          customRenderer?: Record<string, any>;
           /** 自定义代码块的包裹渲染器 */
           wrapperRender?: (language: string, code: string, innerHTML: string) => string;
           mermaid?: {
@@ -561,7 +578,9 @@ export type EditorMode =
   /** 仅预览 */
   | 'previewOnly'
   /** 双栏编辑 */
-  | 'edit&preview';
+  | 'edit&preview'
+  /** 所见即所得编辑 */
+  | 'wysiwyg';
 
 export interface CherryEditorOptions {
   id?: string; // textarea 的id属性值
@@ -764,6 +783,13 @@ export interface CherryChangeLocaleToolbarOption {
   locale: string;
   name: string;
 }
+export type CherryToolbarButton = string | Record<string, string[]>;
+export interface CherryToolbarGroup {
+  buttons: CherryToolbarButton[];
+  large?: boolean | string[];
+  showLabel?: boolean | string[];
+  styleCard?: boolean;
+}
 export interface CherryToolbarsOptions<F extends CherryToolbarsCustomType = CherryToolbarsCustomType> {
   /**
    * @deprecated 不再支持theme的配置，统一在`themeSettings.toolbarTheme`中配置
@@ -784,7 +810,13 @@ export interface CherryToolbarsOptions<F extends CherryToolbarsCustomType = Cher
     | false;
   toolbarRight?: (CherryDefaultBubbleToolbar | CherryDefaultToolbar)[] | false;
   /** Ribbon 风格标签页工具栏配置，设置后替代扁平 toolbar */
-  toolbarTabs?: { name: string; buttons: (string | Record<string, string[]>)[] }[] | false;
+  toolbarTabs?:
+    | {
+        name: string;
+        buttons?: CherryToolbarButton[];
+        groups?: CherryToolbarGroup[];
+      }[]
+    | false;
   /** 是否展示悬浮目录 */
   toc?:
     | false

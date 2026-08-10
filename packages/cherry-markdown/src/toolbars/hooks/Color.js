@@ -33,7 +33,7 @@ export default class Color extends MenuBase {
    * @param {string} selection 被用户选中的文本内容
    * @param {string} shortKey 快捷键参数，color: #000000 | background-color: #000000
    * @param {Event & {target:HTMLElement}} event 点击事件，用来从被点击的调色盘中获得对应的颜色
-   * @returns {string | undefined} 回填到编辑器光标位置/选中文本区域的内容
+   * @returns {string | false | undefined} 回填到编辑器光标位置/选中文本区域的内容
    */
   onClick(selection, shortKey = '', event) {
     // WYSIWYG 模式：通过 Milkdown mark 命令应用颜色

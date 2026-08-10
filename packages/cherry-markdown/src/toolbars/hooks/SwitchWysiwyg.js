@@ -46,7 +46,8 @@ export default class SwitchWysiwyg extends MenuBase {
    * 高亮当前激活的模式
    */
   getActiveSubMenuIndex(subMenuDomPanel) {
-    const status = this.$cherry.status || {};
+    const status = this.$cherry.status;
+    if (!status) return 0;
     if (status.wysiwyg === 'show') return this.$cherry.options?.wysiwyg?.enabled ? 3 : -1;
     if (status.editor === 'show' && status.previewer === 'show') return 0;
     if (status.editor === 'show' && status.previewer === 'hide') return 1;

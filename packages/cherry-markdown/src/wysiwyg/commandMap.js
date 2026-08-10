@@ -109,13 +109,16 @@ function wrapBlocksInList(state, dispatch, targetListType, extraItemAttrs) {
       pendingItems.push(listItemType.create(makeItemAttrs(), para));
     } else if (block.type.name === 'bullet_list' || block.type.name === 'ordered_list') {
       // 已有列表 → 展平：提取每个 list_item 的内容，重新包裹
-      block.forEach((child) => {
+      for (let childIndex = 0; childIndex < block.childCount; childIndex++) {
+        const child = block.child(childIndex);
         if (child.type.name === 'list_item') {
           const content = [];
-          child.forEach((inner) => content.push(inner));
+          for (let innerIndex = 0; innerIndex < child.childCount; innerIndex++) {
+            content.push(child.child(innerIndex));
+          }
           pendingItems.push(listItemType.create(makeItemAttrs(), content));
         }
-      });
+      }
     } else if (block.type.name === 'paragraph') {
       pendingItems.push(listItemType.create(makeItemAttrs(), block));
     } else {
@@ -347,8 +350,7 @@ export function createWysiwygCommandMap() {
           if (bqType) {
             const { listPos, listNode } = enclosing;
             const tr = state.tr;
-            tr.replaceWith(listPos, listPos + listNode.nodeSize,
-              bqType.create(null, listNode));
+            tr.replaceWith(listPos, listPos + listNode.nodeSize, bqType.create(null, listNode));
             tr.scrollIntoView();
             dispatch(tr);
             return true;
@@ -423,8 +425,11 @@ export function createWysiwygCommandMap() {
           if (panelNodeType) {
             const { listPos, listNode } = enclosing;
             const tr = state.tr;
-            tr.replaceWith(listPos, listPos + listNode.nodeSize,
-              panelNodeType.create({ panelType: shortKey || 'primary', title: '' }, listNode));
+            tr.replaceWith(
+              listPos,
+              listPos + listNode.nodeSize,
+              panelNodeType.create({ panelType: shortKey || 'primary', title: '' }, listNode),
+            );
             tr.scrollIntoView();
             dispatch(tr);
             return true;
@@ -443,8 +448,11 @@ export function createWysiwygCommandMap() {
           if (detailNodeType) {
             const { listPos, listNode } = enclosing;
             const tr = state.tr;
-            tr.replaceWith(listPos, listPos + listNode.nodeSize,
-              detailNodeType.create({ title: shortKey || '' }, listNode));
+            tr.replaceWith(
+              listPos,
+              listPos + listNode.nodeSize,
+              detailNodeType.create({ title: shortKey || '' }, listNode),
+            );
             tr.scrollIntoView();
             dispatch(tr);
             return true;

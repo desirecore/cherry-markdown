@@ -29,7 +29,7 @@ export default class Detail extends MenuBase {
   /**
    * 响应点击事件
    * @param {string} selection 被用户选中的文本内容
-   * @returns {string} 回填到编辑器光标位置/选中文本区域的内容
+   * @returns {string | false} 回填到编辑器光标位置/选中文本区域的内容
    */
   onClick(selection) {
     // WYSIWYG 模式下，直接通过 execCommand 插入/包裹 detail 节点

@@ -31,7 +31,7 @@
     "dev:vite": "vite",
     "build": "run-s clean build:all",
     "build:all": "run-p iconfont build:styles build:types build:addons build:full build:core build:engine build:engine-full build:stream build:wysiwyg",
-    "build:full": "cross-env NODE_ENV=production rollup --config build/build.js",
+    "build:full": "cross-env TRANSPILE_ALL_DEPENDENCIES=true NODE_ENV=production rollup --config build/build.js",
     "build:core": "cross-env CORE_BUILD=true NODE_ENV=production rollup --config build/rollup.core.config.js",
     "build:engine": "cross-env CORE_BUILD=true NODE_ENV=production rollup --config build/rollup.engine.config.js",
     "build:engine-full": "cross-env CORE_BUILD=false NODE_ENV=production rollup --config build/rollup.engine.config.js",
@@ -41,7 +41,7 @@
     "build:types": "tsc --project tsconfig.json && node build/replacePaths.js",
     "build:styles": "cross-env NODE_ENV=production rollup --config build/rollup.styles.config.js",
     "clean": "rimraf ./dist",
-    "check-bundle": "es-check es5 dist/cherry-markdown.js",
+    "check-bundle": "es-check es5 dist/super-doc.js",
     "test": "vitest",
     "test:update": "vitest -u",
     "lint": "cd ../.. && npx prettier --check packages/cherry-markdown/src/**/*.js && npx eslint --ignore-path .eslintignore packages/cherry-markdown/src/**/*.js",
@@ -101,7 +101,7 @@
     "mitt": "^3.0.0",
     "npm-run-all": "^4.1.5",
     "openai": "^5.23.2",
-    "postcss": "^8.5.15",
+    "postcss": "^8.5.26",
     "prismjs": "^1.30.0",
     "replace-in-file": "^7.2.0",
     "rimraf": "^3.0.2",
@@ -121,7 +121,7 @@
     "@milkdown/kit": "^7.21.2",
     "@types/codemirror": "^5.60.17",
     "crypto-js": "^4.2.0",
-    "dompurify": "^3.4.11",
+    "dompurify": "^3.4.13",
     "htmlparser2": "^12.0.0",
     "jsdom": "^29.1.1",
     "ws": "^8.21.0"
@@ -134,9 +134,9 @@
     "xmldom": "0.5.0",
     "ansi-regex": "5.0.1",
     "glob-watcher": "6.0.0",
-    "dompurify": "3.4.11"
+    "dompurify": "3.4.13"
   },
   "optionalDependencies": {
-    "mermaid": "11.15.0"
+    "mermaid": "11.16.1"
   }
 }

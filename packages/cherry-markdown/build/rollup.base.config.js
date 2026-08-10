@@ -25,6 +25,7 @@ import json from '@rollup/plugin-json';
 import envReplacePlugin from './env.js';
 
 const IS_PRODUCTION = process.env.NODE_ENV === 'production';
+const TRANSPILE_ALL_DEPENDENCIES = process.env.TRANSPILE_ALL_DEPENDENCIES === 'true';
 const currentDir = dirname(fileURLToPath(import.meta.url));
 const PROJECT_ROOT_PATH = path.resolve(currentDir, '..');
 
@@ -102,12 +103,28 @@ const options = {
     babel({
       // use inline config to avoid Babel attempting to load an ESM config file asynchronously
       babelHelpers: 'runtime',
-      exclude: [/node_modules[\\/](?!codemirror[\\/]src[\\/]|parse5|lodash-es|d3-.*[\\/]src|d3[\\/]src|dagre-d3-es)/],
+      exclude: TRANSPILE_ALL_DEPENDENCIES
+        ? undefined
+        : [
+            /node_modules[\\/](?!codemirror[\\/]src[\\/]|crypto-js|dompurify|parse5|lodash-es|d3-.*[\\/]src|d3[\\/]src|dagre-d3-es)/,
+          ],
       babelrc: false,
       configFile: false,
       presets: babelConfig.presets,
       plugins: babelConfig.plugins,
     }),
+    {
+      name: 'es5-optional-catch-binding',
+      renderChunk(code, _chunk, outputOptions) {
+        if (outputOptions.format !== 'umd') {
+          return null;
+        }
+        return {
+          code: code.replace(/\bcatch\s*\{/g, 'catch (_ignoredError) {'),
+          map: null,
+        };
+      },
+    },
     // TODO: 重构抽出为独立的插件
     {
       name: 'dist-types',

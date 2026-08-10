@@ -15,6 +15,7 @@
  */
 import ParagraphBase from '@/core/ParagraphBase';
 import { compileRegExp } from '@/utils/regexp';
+import { isValidScheme } from '@/utils/sanitize';
 import UrlCache from '@/UrlCache';
 /**
  * 脚注和引用语法
@@ -57,7 +58,11 @@ export default class CommentReference extends ParagraphBase {
 
   pushCommentReferenceCache(key, cache) {
     const [url, ...args] = cache.split(/[ ]+/g);
-    const innerUrl = UrlCache.set(this.unwrapUrl(url));
+    const unwrappedUrl = this.unwrapUrl(url);
+    if (!isValidScheme(unwrappedUrl)) {
+      return;
+    }
+    const innerUrl = UrlCache.set(unwrappedUrl);
     this.commentCache[`${key}`.toLowerCase()] = [innerUrl, ...args].join(' ');
   }
 

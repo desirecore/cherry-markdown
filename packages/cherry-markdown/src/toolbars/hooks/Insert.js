@@ -123,7 +123,9 @@ export default class Insert extends MenuBase {
         input.accept = accept;
         input.style.display = 'none';
         input.addEventListener('change', (event) => {
-          const [file] = event.target.files;
+          const target = event.target instanceof HTMLInputElement ? event.target : null;
+          const [file] = target?.files || [];
+          if (!file) return;
           this.$cherry.options.callback.fileUpload(file, (url) => {
             if (typeof url === 'string' && url) {
               this.$cherry.wysiwygEditor.insertImage({ src: url, alt: file.name });

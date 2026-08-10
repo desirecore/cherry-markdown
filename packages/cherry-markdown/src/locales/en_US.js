@@ -21,8 +21,6 @@ export default {
   groupStyles: 'Styles',
   paste: 'Paste',
   pasteDefault: 'Smart Paste',
-  pastePlain: 'Paste as Plain Text',
-  pasteMarkdown: 'Paste as Markdown',
   cut: 'Cut',
   copySelection: 'Copy',
   tabInsert: 'Insert',

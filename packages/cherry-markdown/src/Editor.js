@@ -82,13 +82,13 @@ export default class Editor {
         // styleActiveLine: false, // 当前行背景高亮
         // matchBrackets: true, // 括号匹配
         // mode: 'gfm', // 从markdown模式改成gfm模式，以使用默认高亮规则
-        mode: {
+        mode: /** @type {any} */ ({
           name: 'yaml-frontmatter', // yaml-frontmatter在gfm的基础上增加了对yaml的支持
           base: {
             name: 'gfm',
             gitHubSpice: false, // 修复github风格的markdown语法高亮，见[issue#925](https://github.com/Tencent/cherry-markdown/issues/925)
           },
-        },
+        }),
         lineWrapping: true, // 自动换行
         indentWithTabs: true, // 缩进用tab表示
         autofocus: true,

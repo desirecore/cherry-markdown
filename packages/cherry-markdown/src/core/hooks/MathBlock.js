@@ -19,7 +19,6 @@ import { getHTML } from '@/utils/dom';
 import { isBrowser } from '@/utils/env';
 import { isLookbehindSupported } from '@/utils/regexp';
 import { replaceLookbehind } from '@/utils/lookbehind-replace';
-import { escapeHTMLSpecialChar } from '@/utils/sanitize';
 
 export default class MathBlock extends ParagraphBase {
   static HOOK_NAME = 'mathBlock';
@@ -86,7 +85,14 @@ export default class MathBlock extends ParagraphBase {
       }
     } else if (this.MathJax?.tex2svg) {
       // MathJax渲染
-      let svg = getHTML(this.MathJax.tex2svg($content), true);
+      let svg = '';
+      try {
+        svg = getHTML(this.MathJax.tex2svg($content), true);
+      } catch (error) {
+        if (this.isSelfClosing()) {
+          svg = this.lastCode;
+        }
+      }
       if (this.isSelfClosing()) {
         if (/data-mml-node="merror"/.test(svg) && this.lastCode) {
           svg = this.lastCode;

@@ -39,6 +39,6 @@ export default defineConfig(async () => ({
   // 添加optimizeDeps配置来解决katex依赖优化问题
   optimizeDeps: {
     include: ['katex', 'echarts'],
-    exclude: ['cherry-markdown'],
+    exclude: ['@desirecore/super-doc'],
   },
 }));

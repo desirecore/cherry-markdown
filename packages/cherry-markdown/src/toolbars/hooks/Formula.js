@@ -45,7 +45,7 @@ export default class Formula extends MenuBase {
    */
   /**
    * 显示公式选择弹窗并定位
-   * @param {Function} onSelect 选择公式后的回调
+   * @param {(formula: string) => void} onSelect 选择公式后的回调
    */
   showFormulaBubble(onSelect) {
     const pos = this.dom.getBoundingClientRect();

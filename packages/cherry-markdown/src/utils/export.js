@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 import html2canvas from 'html2canvas';
+import { escapeHTMLSpecialChar } from './sanitize';
 
 /**
  * 将预览区域的内容放在body上准备后续导出操作
@@ -83,32 +84,35 @@ export async function exportPDF(previewDom, fileName, options = {}) {
   document.title = fileName;
 
   return new Promise((resolve, reject) => {
-    getReadyToExport(previewDom, async (/** @type {HTMLElement}*/ cherryPreviewer, /** @type {function}*/ thenFinish) => {
-      const htmlEl = document.documentElement;
-      const hadExportOnly = htmlEl.classList.contains('cherry-export-only');
-      if (!hadExportOnly) htmlEl.classList.add('cherry-export-only');
-      // 强制展开所有代码块
-      cherryPreviewer.innerHTML = cherryPreviewer.innerHTML.replace(
-        /class="cherry-code-unExpand("| )/g,
-        'class="cherry-code-expand$1',
-      );
-      try {
-        if (typeof options.pdfExporter === 'function') {
-          const pdfBuffer = await options.pdfExporter();
-          const blob = new Blob([pdfBuffer], { type: 'application/pdf' });
-          fileDownload(URL.createObjectURL(blob), `${fileName}.pdf`);
-        } else {
-          window.print();
+    getReadyToExport(
+      previewDom,
+      async (/** @type {HTMLElement}*/ cherryPreviewer, /** @type {function}*/ thenFinish) => {
+        const htmlEl = document.documentElement;
+        const hadExportOnly = htmlEl.classList.contains('cherry-export-only');
+        if (!hadExportOnly) htmlEl.classList.add('cherry-export-only');
+        // 强制展开所有代码块
+        cherryPreviewer.innerHTML = cherryPreviewer.innerHTML.replace(
+          /class="cherry-code-unExpand("| )/g,
+          'class="cherry-code-expand$1',
+        );
+        try {
+          if (typeof options.pdfExporter === 'function') {
+            const pdfBuffer = await options.pdfExporter();
+            const blob = new Blob([pdfBuffer], { type: 'application/pdf' });
+            fileDownload(URL.createObjectURL(blob), `${fileName}.pdf`);
+          } else {
+            window.print();
+          }
+          resolve();
+        } catch (err) {
+          reject(err);
+        } finally {
+          thenFinish();
+          if (!hadExportOnly) htmlEl.classList.remove('cherry-export-only');
+          document.title = oldTitle;
         }
-        resolve();
-      } catch (err) {
-        reject(err);
-      } finally {
-        thenFinish();
-        if (!hadExportOnly) htmlEl.classList.remove('cherry-export-only');
-        document.title = oldTitle;
-      }
-    });
+      },
+    );
   });
 }
 
@@ -225,7 +229,19 @@ export function exportMarkdownFile(markdownText, fileName) {
  * @param {String} fileName 导出HTML文件名
  */
 export function exportHTMLFile(HTMLText, fileName) {
-  const blob = new Blob([HTMLText], { type: 'text/markdown;charset=utf-8' });
+  const language = (navigator.language || 'en').replace(/[^A-Za-z0-9-]/g, '') || 'en';
+  const fullHTML = `<!DOCTYPE html>
+<html lang="${language}">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${escapeHTMLSpecialChar(String(fileName))}</title>
+</head>
+<body>
+${HTMLText}
+</body>
+</html>`;
+  const blob = new Blob([fullHTML], { type: 'text/html;charset=utf-8' });
   const aLink = document.createElement('a');
   aLink.style.display = 'none';
   aLink.href = URL.createObjectURL(blob);
@@ -233,6 +249,7 @@ export function exportHTMLFile(HTMLText, fileName) {
   document.body.appendChild(aLink);
   aLink.click();
   document.body.removeChild(aLink);
+  URL.revokeObjectURL(aLink.href);
 }
 
 // Word 导出功能

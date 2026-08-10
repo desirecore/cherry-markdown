@@ -15,6 +15,7 @@
  */
 import mergeWith from 'lodash/mergeWith';
 import Logger from '@/Logger';
+import { escapeHTMLSpecialChar } from '@/utils/sanitize';
 
 // 主题与常量集中管理
 const THEME = {
@@ -596,14 +597,17 @@ export default class EChartsTableEngine {
       .map(([key, value]) => `${key}: ${value};`)
       .join(' ');
 
+    const escapeAttr = (value) =>
+      String(value).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
     // 创建一个包含所有必要信息的HTML结构
     const htmlContent = [
       `<div class="cherry-echarts-wrapper"`,
-      ` style="${styleStr}"`,
-      ` id="${chartId}"`,
-      ` data-chart-type="${type}"`,
-      ` data-table-data="${tableDataStr.replace(/"/g, '&quot;')}"`,
-      ` data-chart-options="${chartOptionsStr.replace(/"/g, '&quot;')}">`,
+      ` style="${escapeAttr(styleStr)}"`,
+      ` id="${escapeAttr(chartId)}"`,
+      ` data-chart-type="${escapeAttr(type)}"`,
+      ` data-table-data="${escapeAttr(tableDataStr)}"`,
+      ` data-chart-options="${escapeAttr(chartOptionsStr)}">`,
       `</div>`,
     ].join('');
     const previewDom = $cherry.previewer.getDom();
@@ -620,9 +624,10 @@ export default class EChartsTableEngine {
           if ($cherry.options.engine.syntax.global.flowSessionContext) {
             container.innerHTML = 'drawing...';
           } else {
+            const message = escapeHTMLSpecialChar(String(error?.message ?? error));
             container.innerHTML = `<div style="text-align: center; color: red; transform: translateY(125px);">
               <div style="font-size: ${this.$theme().fontSize.title}px; color: ${this.$theme().color.error};">${this.cherry.locale.chartRenderError}</div>
-              <div style="font-size: ${this.$theme().fontSize.base}px; color: ${this.$theme().color.text}; opacity: 0.7;">${error.message}</div>
+              <div style="font-size: ${this.$theme().fontSize.base}px; color: ${this.$theme().color.text}; opacity: 0.7;">${message}</div>
             </div>`;
           }
         }
