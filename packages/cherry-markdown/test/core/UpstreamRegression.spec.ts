@@ -154,6 +154,56 @@ describe('ported upstream regressions', () => {
   });
 
   describe('rendering correctness', () => {
+    it.each([
+      [
+        'renders a full reference whose label contains balanced literal brackets',
+        '[link [foo [bar]]][ref]\n\n[ref]: /uri',
+        '<a href="/uri">link [foo [bar]]</a>',
+      ],
+      [
+        'renders a reference link around an inline image',
+        '[![moon](moon.jpg)][ref]\n\n[ref]: /uri',
+        '<a href="/uri"><img src="moon.jpg" alt="moon"></a>',
+      ],
+      [
+        'renders a reference link around a reference-style image',
+        '[![moon][image]][outer]\n\n[image]: moon.jpg\n[outer]: /uri',
+        '<a href="/uri"><img src="moon.jpg" alt="moon"></a>',
+      ],
+      [
+        'keeps an inline link inside a non-linking outer label',
+        '[foo [bar](/uri)][ref]\n\n[ref]: /uri',
+        '[foo <a href="/uri">bar</a>]<a href="/uri">ref</a>',
+      ],
+      [
+        'keeps a nested reference link inside a non-linking outer label',
+        '[foo *bar [baz][ref]*][ref]\n\n[ref]: /uri',
+        '[foo <em>bar <a href="/uri">baz</a></em>]<a href="/uri">ref</a>',
+      ],
+      [
+        'consumes the collapsed-reference suffix',
+        '![foo][]\n\n[foo]: /url "title"',
+        '<img src="/url" alt="foo" title="title">',
+      ],
+      [
+        'falls back to the shortcut reference when the inline destination is invalid',
+        '[foo](not a link)\n\n[foo]: /url1',
+        '<a href="/url1">foo</a>(not a link)',
+      ],
+    ])('%s', (_description, markdown, expected) => {
+      const html = createEngine().makeHtml(markdown);
+
+      expect(html).toContain(expected);
+    });
+
+    it('renders a nested safe data-image reference without turning it into a link', () => {
+      const png = 'data:image/png;base64,iVBORw0KGgo=';
+      const html = createEngine().makeHtml(`[![moon][image]][outer]\n\n[image]: ${png}\n[outer]: /uri`);
+
+      expect(html).toContain(`<a href="/uri"><img src="${png}" alt="moon"></a>`);
+      expect(html).not.toContain(`<a href="${png}"`);
+    });
+
     it('validates parsed hexadecimal code points', () => {
       expect(escapeHTMLEntitiesWithoutSemicolon('&#x41;')).toBe('&#x41;');
       expect(escapeHTMLEntitiesWithoutSemicolon('&#x110000;')).toBe('&amp;#x110000;');
