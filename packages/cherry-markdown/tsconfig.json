@@ -11,43 +11,27 @@
     "emitDeclarationOnly": true,
     // "outFile": "types/cherry-markdown.d.ts",
     "outDir": "dist/types",
-    "target": "ES5",
+    "target": "ES2020",
+    "lib": ["ES2021", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "node",
     "skipLibCheck": true,
     // Only auto-load Node ambient types (for `process.env` in source). Prevents tsc from
     // implicitly pulling unrelated transitive @types (e.g. mermaid's @types/d3, @types/minimatch)
     // which can fail to parse under this package's pinned TypeScript and break d.ts generation.
     "types": ["node"],
     "paths": {
-      "@/*": [
-        "src/*"
-      ],
-      "~types/*": [
-        "types/*"
-      ],
+      "@/*": ["src/*"],
+      "~types/*": ["types/*"],
       // Redirect mermaid's type import to a local stub during d.ts generation;
       // its real types pull modern @types/d3 syntax that the pinned TS 4.7.2 can't parse.
       // Runtime bundling (Rollup) is unaffected and uses the real mermaid package.
-      "mermaid": [
-        "types/mermaid.d.ts"
-      ],
+      "mermaid": ["types/mermaid.d.ts"]
     },
     "resolveJsonModule": true,
-    "esModuleInterop": true,
+    "esModuleInterop": true
   },
-  "include": [
-    "src/index.js",
-    "src/index.core.js",
-    "src/index.engine.js",
-    "src/index.stream.js",
-  ],
-  "exclude": [
-    "**/node_modules/**",
-    "src/libs/**/*",
-    "dist"
-  ],
-  "files": [
-    "types/codemirror.d.ts",
-    "types/global.d.ts",
-    "types/index.d.ts"
-  ]
+  "include": ["src/index.js", "src/index.core.js", "src/index.engine.js", "src/index.stream.js"],
+  "exclude": ["**/node_modules/**", "src/libs/**/*", "dist"],
+  "files": ["types/codemirror.d.ts", "types/global.d.ts", "types/index.d.ts"]
 }

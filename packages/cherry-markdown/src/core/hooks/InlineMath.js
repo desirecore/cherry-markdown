@@ -19,7 +19,6 @@ import { getHTML } from '@/utils/dom';
 import { isBrowser } from '@/utils/env';
 import { getTableRule, isLookbehindSupported, mathBlockReg } from '@/utils/regexp';
 import { replaceLookbehind } from '@/utils/lookbehind-replace';
-import { escapeHTMLSpecialChar } from '@/utils/sanitize';
 
 /**
  * 行内公式的语法
@@ -77,7 +76,16 @@ export default class InlineMath extends ParagraphBase {
       }
     } else if (this.MathJax?.tex2svg) {
       // MathJax渲染
-      let svg = getHTML(this.MathJax.tex2svg($m1, { em: 12, ex: 6, display: false }), true);
+      let svg = '';
+      try {
+        svg = getHTML(this.MathJax.tex2svg($m1, { em: 12, ex: 6, display: false }), true);
+      } catch (error) {
+        if (this.isSelfClosing() && this.lastCode) {
+          svg = this.lastCode;
+        } else {
+          svg = `$${escapeFormulaPunctuations($m1)}$`;
+        }
+      }
       if (this.isSelfClosing()) {
         if (/data-mml-node="merror"/.test(svg) && this.lastCode) {
           svg = this.lastCode;

@@ -294,12 +294,14 @@ export const tocView = $view(tocSchema.node, () => (initialNode, view, getPos) =
     // Show toast if section had extra content
     if (subHeadings > 0 || blocks > 0) {
       const parts = [];
-      if (subHeadings > 0) parts.push(tocLocale.subHeadingCount
-        ? tocLocale.subHeadingCount.replace('{n}', subHeadings)
-        : `${subHeadings} sub-heading(s)`);
-      if (blocks > 0) parts.push(tocLocale.blockCount
-        ? tocLocale.blockCount.replace('{n}', blocks)
-        : `${blocks} block(s)`);
+      if (subHeadings > 0)
+        parts.push(
+          tocLocale.subHeadingCount
+            ? tocLocale.subHeadingCount.replace('{n}', subHeadings)
+            : `${subHeadings} sub-heading(s)`,
+        );
+      if (blocks > 0)
+        parts.push(tocLocale.blockCount ? tocLocale.blockCount.replace('{n}', blocks) : `${blocks} block(s)`);
       const msg = tocLocale.sectionMoved
         ? tocLocale.sectionMoved.replace('{content}', parts.join(tocLocale.and || ', '))
         : `Moved with ${parts.join(', ')}`;
@@ -330,7 +332,7 @@ export const tocView = $view(tocSchema.node, () => (initialNode, view, getPos) =
     headings.forEach((h, idx) => {
       const li = document.createElement('li');
       li.className = `toc-li toc-li-${h.level}`;
-      li.dataset.index = idx;
+      li.dataset.index = String(idx);
 
       // Drag handle
       const handle = document.createElement('span');
@@ -349,12 +351,12 @@ export const tocView = $view(tocSchema.node, () => (initialNode, view, getPos) =
         dragFromIndex = -1;
         dragLevelDelta = 0;
         li.classList.remove('cherry-toc-dragging');
-        listEl.querySelectorAll('.cherry-toc-drop-above,.cherry-toc-drop-below').forEach(
-          (el) => {
-            el.classList.remove('cherry-toc-drop-above', 'cherry-toc-drop-below');
+        listEl.querySelectorAll('.cherry-toc-drop-above,.cherry-toc-drop-below').forEach((el) => {
+          el.classList.remove('cherry-toc-drop-above', 'cherry-toc-drop-below');
+          if (el instanceof HTMLElement) {
             el.style.removeProperty('--drop-indent');
-          },
-        );
+          }
+        });
       });
       li.appendChild(handle);
 
@@ -432,9 +434,16 @@ export const tocView = $view(tocSchema.node, () => (initialNode, view, getPos) =
         if (idx > dragFromIndex && idx < currentHeadings.length) {
           let inSection = true;
           for (let i = dragFromIndex + 1; i <= idx; i++) {
-            if (currentHeadings[i].level <= fromLevel) { inSection = false; break; }
+            if (currentHeadings[i].level <= fromLevel) {
+              inSection = false;
+              break;
+            }
           }
-          if (inSection) { dragFromIndex = -1; dragLevelDelta = 0; return; }
+          if (inSection) {
+            dragFromIndex = -1;
+            dragLevelDelta = 0;
+            return;
+          }
         }
 
         const rect = li.getBoundingClientRect();
@@ -445,7 +454,7 @@ export const tocView = $view(tocSchema.node, () => (initialNode, view, getPos) =
         // after it (as its child), not before (which would land under
         // the previous parent).
         const isChild = targetLevel > h.level;
-        const dropIdx = (isChild || e.clientY >= mid) ? idx + 1 : idx;
+        const dropIdx = isChild || e.clientY >= mid ? idx + 1 : idx;
         const adjustedTarget = dragFromIndex < dropIdx ? dropIdx - 1 : dropIdx;
         moveHeading(dragFromIndex, adjustedTarget, dragLevelDelta);
         dragFromIndex = -1;
@@ -540,7 +549,10 @@ export const tocView = $view(tocSchema.node, () => (initialNode, view, getPos) =
     const btn = document.createElement('button');
     btn.className = className;
     btn.textContent = text;
-    btn.addEventListener('mousedown', (e) => { e.preventDefault(); e.stopPropagation(); });
+    btn.addEventListener('mousedown', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+    });
     btn.addEventListener('click', (e) => {
       e.preventDefault();
       e.stopPropagation();
@@ -561,11 +573,18 @@ export const tocView = $view(tocSchema.node, () => (initialNode, view, getPos) =
       if (updatedNode.type.name !== NODE_NAME) return false;
       return true;
     },
-    ignoreMutation() { return true; },
-    stopEvent() { return true; },
+    ignoreMutation() {
+      return true;
+    },
+    stopEvent() {
+      return true;
+    },
     destroy() {
       const set = activeTocViewsByEditor.get(view);
-      if (set) { set.delete(instance); if (set.size === 0) activeTocViewsByEditor.delete(view); }
+      if (set) {
+        set.delete(instance);
+        if (set.size === 0) activeTocViewsByEditor.delete(view);
+      }
     },
   };
 });
@@ -573,33 +592,34 @@ export const tocView = $view(tocSchema.node, () => (initialNode, view, getPos) =
 // ---------------------------------------------------------------------------
 // 5. Refresh plugin
 // ---------------------------------------------------------------------------
-export const tocRefreshPlugin = $prose(() => new Plugin({
-  key: tocPluginKey,
-  view() {
-    return {
-      update(editorView, prevState) {
-        if (editorView.state.doc.eq(prevState.doc)) return;
-        const views = activeTocViewsByEditor.get(editorView);
-        if (!views) return;
-        for (const tocInstance of views) {
-          tocInstance.render();
-        }
+export const tocRefreshPlugin = $prose(
+  () =>
+    new Plugin({
+      key: tocPluginKey,
+      view() {
+        return {
+          update(editorView, prevState) {
+            if (editorView.state.doc.eq(prevState.doc)) return;
+            const views = activeTocViewsByEditor.get(editorView);
+            if (!views) return;
+            for (const tocInstance of views) {
+              tocInstance.render();
+            }
+          },
+        };
       },
-    };
-  },
-}));
+    }),
+);
 
 // ---------------------------------------------------------------------------
 // 6. Command
 // ---------------------------------------------------------------------------
-export const insertTocCommand = $command('InsertToc', (ctx) => () =>
-  (state, dispatch) => {
-    const nodeType = state.schema.nodes[NODE_NAME];
-    if (!nodeType) return false;
-    dispatch?.(state.tr.replaceSelectionWith(nodeType.create()));
-    return true;
-  },
-);
+export const insertTocCommand = $command('InsertToc', (ctx) => () => (state, dispatch) => {
+  const nodeType = state.schema.nodes[NODE_NAME];
+  if (!nodeType) return false;
+  dispatch?.(state.tr.replaceSelectionWith(nodeType.create()));
+  return true;
+});
 
 // ---------------------------------------------------------------------------
 // 7. Export

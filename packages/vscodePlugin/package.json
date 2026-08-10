@@ -186,7 +186,7 @@
   "dependencies": {
     "@types/mathjax": "0.0.37",
     "axios": "^1.18.1",
-    "cherry-markdown": "*",
+    "@desirecore/super-doc": "*",
     "html-to-image": "^1.11.13",
     "katex": "^0.16.47",
     "mathjax": "^3.2.2",

@@ -1,5 +1,5 @@
-import Cherry from 'cherry-markdown';
-import { CherryOptions } from 'cherry-markdown/types/cherry';
+import Cherry from '@desirecore/super-doc';
+import { CherryOptions } from '@desirecore/super-doc/types/cherry';
 import katex from 'katex';
 import 'katex/dist/katex.min.css';
 

@@ -52,12 +52,13 @@ export const superscriptSchema = $markSchema(MARK_NAME, () => ({
   },
 }));
 
-export const toggleSuperscriptCommand = $command('ToggleSuperscript', (ctx) => () =>
-  toggleMark(superscriptSchema.type(ctx)),
+export const toggleSuperscriptCommand = $command(
+  'ToggleSuperscript',
+  (ctx) => () => toggleMark(superscriptSchema.type(ctx)),
 );
 
 export const superscriptInputRule = $inputRule((ctx) =>
-  markRule(/(?<![\\^])(\^)([^\s^](?:[^^]*[^\s^])?)(\^)(?!\^)/, superscriptSchema.type(ctx)),
+  markRule(new RegExp('(?<![\\\\^])(\\^)([^\\s^](?:[^^]*[^\\s^])?)(\\^)(?!\\^)'), superscriptSchema.type(ctx)),
 );
 
 export const superscript = [

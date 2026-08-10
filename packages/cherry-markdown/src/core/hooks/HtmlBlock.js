@@ -90,12 +90,18 @@ export default class HtmlBlock extends ParagraphBase {
     $str = escapeHTMLEntitiesWithoutSemicolon($str);
     $str = $str.replace(/<[/]?([^<]*?)>/g, (whole, m1) => {
       if (htmlBlackList && htmlBlackList.test(m1) && !this.isAutoLinkTag(whole) && !this.isHtmlComment(whole)) {
+        if (/\n[\t ]*$/.test(m1)) {
+          return whole.replace(/</g, '&#60;');
+        }
         return whole.replace(/</g, '&#60;').replace(/>/g, '&#62;');
       }
       // 匹配到非白名单且非AutoLink语法的尖括号会被转义
       // 如果是HTML注释，放行
       if (!whiteList.test(m1) && !this.isAutoLinkTag(whole) && !this.isHtmlComment(whole)) {
         if (this.htmlWhiteListAppend === false || !this.htmlWhiteListAppend.test(m1)) {
+          if (/\n[\t ]*$/.test(m1)) {
+            return whole.replace(/</g, '&#60;');
+          }
           return whole.replace(/</g, '&#60;').replace(/>/g, '&#62;');
         }
       }
@@ -218,21 +224,10 @@ export default class HtmlBlock extends ParagraphBase {
     }
     config.HTML_INTEGRATION_POINTS.foreignobject = true;
 
-    const $strArr = $str.split('\n');
-    // 如果内容很大，则分批处理，用空间换sanitizer.sanitize消耗的时间
-    const batch = 100;
-    // 最大缓存容量（冗余20%）
-    const maxCacheLength = Math.round((1.2 * $strArr.length) / batch);
-    if ($strArr.length > batch) {
-      const ret = [];
-      for (let i = 0; i < $strArr.length; i += batch) {
-        const batchStr = $strArr.slice(i, i + batch).join('\n');
-        ret.push(
-          this.cacheAndGetData(batchStr, (batchStr) => sanitizer.sanitize(batchStr, config), maxCacheLength, -10),
-        );
-      }
-      return ret.join('\n');
-    }
+    // Sanitizing arbitrary markdown paragraph chunks independently can split an
+    // open HTML ancestor (for example, a long <div>) and silently change the
+    // document tree.  Keep the DOM tree intact; higher-level render caching
+    // already prevents repeatedly sanitizing unchanged documents.
     return sanitizer.sanitize($str, config);
   }
 }

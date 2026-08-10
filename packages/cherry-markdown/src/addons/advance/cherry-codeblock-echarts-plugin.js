@@ -15,6 +15,7 @@
  */
 import mergeWith from 'lodash/mergeWith';
 import JSON5 from 'json5';
+import { escapeHTMLSpecialChar } from '@/utils/sanitize';
 
 export default class EChartsCodeBlockEngine {
   static install(cherryOptions, ...args) {
@@ -71,7 +72,8 @@ export default class EChartsCodeBlockEngine {
           if ($engine.$cherry.options.engine.global.flowSessionContext) {
             container.innerHTML = `drawing...`;
           } else {
-            container.innerHTML = `<div style="color: red;">Render Error: ${error.message}</div>`;
+            const message = escapeHTMLSpecialChar(String(error?.message ?? error));
+            container.innerHTML = `<div style="color: red;">Render Error: ${message}</div>`;
           }
         }
       });

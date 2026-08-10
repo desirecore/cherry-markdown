@@ -21,8 +21,6 @@ export default {
   groupStyles: 'Стили',
   paste: 'Вставить',
   pasteDefault: 'Умная вставка',
-  pastePlain: 'Вставить как текст',
-  pasteMarkdown: 'Вставить как Markdown',
   cut: 'Вырезать',
   copySelection: 'Копировать',
   tabInsert: 'Вставка',

@@ -23,7 +23,7 @@ export function compileRegExp(obj, flags, allowExtendedFlags) {
 }
 
 export const mathBlockReg = isLookbehindSupported()
-  ? /(\s*)((?<!\\))~D~D\s*([\w\W]*?)(\s*)~D~D(?:\s{0,1})/g
+  ? new RegExp('(\\s*)((?<!\\\\))~D~D\\s*([\\w\\W]*?)(\\s*)~D~D(?:\\s{0,1})', 'g')
   : /(\s*)(^|[^\\])~D~D\s*([\w\W]*?)(\s*)~D~D(?:\s{0,1})/g;
 
 export function isLookbehindSupported() {

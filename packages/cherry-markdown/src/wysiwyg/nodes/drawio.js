@@ -62,12 +62,7 @@ function transformDrawioNodes(tree) {
       const next = node.children[i + 1];
 
       // Case: image node followed by text starting with "{data-type=drawio"
-      if (
-        child.type === 'image' &&
-        next &&
-        next.type === 'text' &&
-        /^\{data-type=drawio\s/.test(next.value)
-      ) {
+      if (child.type === 'image' && next && next.type === 'text' && /^\{data-type=drawio\s/.test(next.value)) {
         const xmlMatch = next.value.match(/^\{data-type=drawio\s+data-xml=([^}]+)\}/);
         if (xmlMatch) {
           newChildren.push({
@@ -152,18 +147,21 @@ export const drawioSchema = $nodeSchema(NODE_NAME, () => ({
 
 // --- Insert Command ---
 
-export const insertDrawioCommand = $command('InsertDrawio', () => ({ desc, base64, xmlData } = {}) =>
-  (state, dispatch) => {
-    const drawioType = state.schema.nodes[NODE_NAME];
-    if (!drawioType) return false;
-    const node = drawioType.create({
-      desc: desc || '',
-      base64: base64 || '',
-      xmlData: xmlData || '',
-    });
-    dispatch?.(state.tr.replaceSelectionWith(node));
-    return true;
-  },
+export const insertDrawioCommand = $command(
+  'InsertDrawio',
+  () =>
+    ({ desc, base64, xmlData } = /** @type {any} */ ({})) =>
+    (state, dispatch) => {
+      const drawioType = state.schema.nodes[NODE_NAME];
+      if (!drawioType) return false;
+      const node = drawioType.create({
+        desc: desc || '',
+        base64: base64 || '',
+        xmlData: xmlData || '',
+      });
+      dispatch?.(state.tr.replaceSelectionWith(node));
+      return true;
+    },
 );
 
 // --- NodeView ---
@@ -180,20 +178,15 @@ function openDrawioEditor(node, view, getPos) {
     xmlData = node.attrs.xmlData;
   }
 
-  drawioDialog(
-    _drawioConfig.iframeUrl,
-    _drawioConfig.iframeStyle,
-    xmlData,
-    (data) => {
-      const { xmlData: newXml, base64: newBase64 } = data;
-      const tr = view.state.tr.setNodeMarkup(pos, undefined, {
-        desc: node.attrs.desc || 'draw.io',
-        base64: newBase64,
-        xmlData: encodeURI(newXml),
-      });
-      view.dispatch(tr);
-    },
-  );
+  drawioDialog(_drawioConfig.iframeUrl, _drawioConfig.iframeStyle, xmlData, (data) => {
+    const { xmlData: newXml, base64: newBase64 } = data;
+    const tr = view.state.tr.setNodeMarkup(pos, undefined, {
+      desc: node.attrs.desc || 'draw.io',
+      base64: newBase64,
+      xmlData: encodeURI(newXml),
+    });
+    view.dispatch(tr);
+  });
 }
 
 export const drawioView = $view(drawioSchema.node, () => (initialNode, view, getPos) => {

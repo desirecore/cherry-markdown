@@ -198,6 +198,7 @@ export default class Table extends ParagraphBase {
     if (chartOptions) {
       rows[0][0] = '';
     }
+    const stripFlowCursor = (cell) => (typeof cell === 'string' ? cell.replace(/CHERRYFLOWSESSIONCURSOR/g, '') : cell);
     /**
      * ~CTHD: <thead>
      * ~CTHD$: </thead>
@@ -212,7 +213,8 @@ export default class Table extends ParagraphBase {
      */
     const tableHeader = this.$extendColumns(rows[0], maxCol)
       .map((cell, col) => {
-        tableObject.header.push(cell.replace(/~CS/g, '\\|'));
+        const value = cell.replace(/~CS/g, '\\|');
+        tableObject.header.push(chartOptions ? stripFlowCursor(value) : value);
         const { html: cellHtml } = sentenceMakeFunc(cell.replace(/~CS/g, '\\|'));
         // 前后补一个空格，否则自动链接会将缓存的内容全部收入链接内部
         return `~CTH${textAlignRules[col] || 'U'} ${cellHtml} ~CTH$`;
@@ -226,7 +228,8 @@ export default class Table extends ParagraphBase {
         const currentRowCountWithoutHeader = line - 2;
         tableObject.rows[currentRowCountWithoutHeader] = [];
         const $extendedColumns = this.$extendColumns(row, maxCol).map((cell, col) => {
-          tableObject.rows[currentRowCountWithoutHeader].push(cell.replace(/~CS/g, '\\|'));
+          const value = cell.replace(/~CS/g, '\\|');
+          tableObject.rows[currentRowCountWithoutHeader].push(chartOptions ? stripFlowCursor(value) : value);
           const { html: cellHtml } = sentenceMakeFunc(cell.replace(/~CS/g, '\\|'));
           // 前后补一个空格，否则自动链接会将缓存的内容全部收入链接内部
           return `~CTD${textAlignRules[col] || 'U'} ${cellHtml} ~CTD$`;

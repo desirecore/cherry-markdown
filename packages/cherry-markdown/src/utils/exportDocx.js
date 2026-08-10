@@ -232,8 +232,10 @@ export async function exportDocxFile(htmlText, fileName, cherry) {
   // 从配置中获取消费端注入的转换函数
   const converter = cherry?.options?.fileExport?.docxConverter;
   if (typeof converter !== 'function') {
-    Logger.error('[exportDocx] 未配置 fileExport.docxConverter，无法导出 DOCX。'
-      + ' 请在 Cherry 初始化时传入：fileExport: { docxConverter: HTMLtoDOCX }');
+    Logger.error(
+      '[exportDocx] 未配置 fileExport.docxConverter，无法导出 DOCX。' +
+        ' 请在 Cherry 初始化时传入：fileExport: { docxConverter: HTMLtoDOCX }',
+    );
     return;
   }
 

@@ -31,15 +31,12 @@ jobs:
 
           tmp=$(mktemp)
           jq '
-            .scripts["build"] = "yarn workspace cherry-markdown-core build" |
+            .scripts["build"] = "yarn workspace @desirecore/super-doc build" |
             .scripts["build:vscodePlugin"] = "yarn workspace cherry-markdown build" |
-            .scripts["postinstall"] = "yarn workspace cherry-markdown-core run iconfont"
+            .scripts["postinstall"] = "yarn workspace @desirecore/super-doc run iconfont"
           ' package.json > "$tmp" && mv "$tmp" package.json
 
-          cd packages/cherry-markdown
-          tmp=$(mktemp) && jq '.name = "cherry-markdown-core"' package.json > "$tmp" && mv "$tmp" package.json
-
-          cd ../vscodePlugin
+          cd packages/vscodePlugin
           # Compact one-liner: strip leading zeros from MMDDHHMM, fallback to HHMMSS if empty
           TIMESTAMP=$(t=$(date +%m%d%H%M | sed 's/^0*//'); [ -n "$t" ] && printf '%s' "$t" || date +%H%M%S)
 
@@ -58,13 +55,12 @@ jobs:
             )
           ' package.json > "$tmp" && mv "$tmp" package.json
 
-          tmp=$(mktemp) && jq '.dependencies["cherry-markdown-core"] = .dependencies["cherry-markdown"] | del(.dependencies["cherry-markdown"])' package.json > "$tmp" && mv "$tmp" package.json
           tmp=$(mktemp) && jq '.name = "cherry-markdown"' package.json > "$tmp" && mv "$tmp" package.json
 
       - name: Install and Build Dependencies
         run: |
           yarn global add vsce
-          yarn --network-timeout 100000
+          yarn --frozen-lockfile --network-timeout 100000
           yarn build
           yarn build:vscodePlugin
 
@@ -87,4 +83,3 @@ jobs:
               repo: context.repo.repo,
               body: `🔌 Preview Cherry Markdown Extensions [see: prerelease-extensions](https://code.visualstudio.com/api/working-with-extensions/publishing-extension?from_column=20423&from=20423#prerelease-extensions)`
             });
-

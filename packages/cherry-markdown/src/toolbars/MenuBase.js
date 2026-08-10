@@ -93,6 +93,7 @@ export default class MenuBase {
     this.locale = $cherry.locale;
     this.dom = null;
     this.updateMarkdown = true; // 是否更新markdown原文
+    this.ribbonFlatten = false; // Ribbon 模式下是否展开子菜单
     /** @type {SubMenuConfigItem[]} */
     this.subMenuConfig = []; // 子菜单配置
     this.noIcon = false; // 是否不显示图标

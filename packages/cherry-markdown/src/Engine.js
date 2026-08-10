@@ -235,7 +235,7 @@ export default class Engine {
         }
         return escapeHTMLSpecialChar(escapeChar);
       })
-      .replace(/\\&(?!(amp|lt|gt|quot|apos);)/, () => '&amp;');
+      .replace(/\\&(?!(amp|lt|gt|quot|apos);)/g, () => '&amp;');
     $str = $str.replace(/\\ <\//g, '\\</');
     $str = $str.replace(/id="safe_(?=.*?")/g, 'id="'); // transform header id to avoid being sanitized
     return $str;
@@ -398,10 +398,10 @@ export default class Engine {
   $deCacheBigData(md) {
     return md
       .replace(/data:cherry\/cache;sha256,[0-9a-f]+/g, (cacheUri) => {
-        return this.cachedBigData[cacheUri];
+        return this.cachedBigData[cacheUri] ?? cacheUri;
       })
       .replace(/bigDataBegin[^\n]+?bigDataEnd/g, (whole) => {
-        return this.cachedBigData[whole];
+        return this.cachedBigData[whole] ?? whole;
       });
   }
 

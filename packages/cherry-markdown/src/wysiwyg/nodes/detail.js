@@ -99,7 +99,7 @@ export const detailSchema = $nodeSchema(NODE_NAME, () => ({
       }),
       contentElement: (dom) => {
         const body = dom.querySelector('.cherry-detail-body');
-        return body || dom;
+        return body instanceof HTMLElement ? body : dom;
       },
     },
     // Editor round-trip: div.cherry-detail-edit
@@ -143,31 +143,30 @@ export const detailSchema = $nodeSchema(NODE_NAME, () => ({
   },
 }));
 
-export const insertDetailCommand = $command('InsertDetail', (ctx) => (title = '') =>
-  (state, dispatch, view) => {
-    const nodeType = state.schema.nodes[NODE_NAME];
-    if (!nodeType) return false;
+export const insertDetailCommand = $command('InsertDetail', (ctx) => (title = '') => (state, dispatch, view) => {
+  const nodeType = state.schema.nodes[NODE_NAME];
+  if (!nodeType) return false;
 
-    const attrs = { title: title || defaultTitle(), open: true };
+  const attrs = { title: title || defaultTitle(), open: true };
 
-    // Use prosemirror wrapIn — robust, handles edge cases, preserves content
-    if (wrapIn(nodeType, attrs)(state, dispatch, view)) return true;
+  // Use prosemirror wrapIn — robust, handles edge cases, preserves content
+  if (wrapIn(nodeType, attrs)(state, dispatch, view)) return true;
 
-    // Fallback: replace current block with a detail containing its content
-    if (dispatch) {
-      const { $from } = state.selection;
-      if ($from.depth < 1) return false;
-      const parent = $from.parent;
-      const content = parent.content.size > 0
+  // Fallback: replace current block with a detail containing its content
+  if (dispatch) {
+    const { $from } = state.selection;
+    if ($from.depth < 1) return false;
+    const parent = $from.parent;
+    const content =
+      parent.content.size > 0
         ? parent.type.create(parent.attrs, parent.content)
         : state.schema.nodes.paragraph.create();
-      const detailNode = nodeType.create(attrs, content);
-      const from = $from.before($from.depth);
-      const to = $from.after($from.depth);
-      dispatch(state.tr.replaceWith(from, to, detailNode));
-    }
-    return true;
-  },
-);
+    const detailNode = nodeType.create(attrs, content);
+    const from = $from.before($from.depth);
+    const to = $from.after($from.depth);
+    dispatch(state.tr.replaceWith(from, to, detailNode));
+  }
+  return true;
+});
 
 export const detail = [remarkDetailPlugin, detailSchema, insertDetailCommand].flat();
