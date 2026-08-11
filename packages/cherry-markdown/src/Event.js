@@ -43,6 +43,7 @@ export default class Event {
     afterChangeLocale: 'afterChangeLocale', // 语言改变
     changeMainTheme: 'changeMainTheme', // 变更主题
     changeCodeBlockTheme: 'changeCodeBlockTheme', // 变更代码块主题
+    modeCommitted: 'modeCommitted', // 编辑模式已最终提交
   };
 
   /**
@@ -123,6 +124,11 @@ export default class Event {
     if (options.event.changeCodeBlockTheme) {
       this.on(this.Events.changeCodeBlockTheme, (theme) => {
         options.event.changeCodeBlockTheme(theme);
+      });
+    }
+    if (options.event.modeCommitted) {
+      this.on(this.Events.modeCommitted, (payload) => {
+        options.event.modeCommitted(payload);
       });
     }
   }

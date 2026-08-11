@@ -26,6 +26,11 @@ import envReplacePlugin from './env.js';
 
 const IS_PRODUCTION = process.env.NODE_ENV === 'production';
 const TRANSPILE_ALL_DEPENDENCIES = process.env.TRANSPILE_ALL_DEPENDENCIES === 'true';
+// Babel runtime helpers and core-js are already distributed as compatibility
+// code. Re-processing them with transform-runtime injects helpers back into
+// core-js itself and can create a circular initialization in the bundled ESM.
+const BABEL_RUNTIME_DEPENDENCIES =
+  /node_modules[\\/](?:@babel[\\/]runtime(?:-corejs\d+)?|core-js(?:-pure)?|regenerator-runtime)[\\/]/;
 const currentDir = dirname(fileURLToPath(import.meta.url));
 const PROJECT_ROOT_PATH = path.resolve(currentDir, '..');
 
@@ -104,8 +109,9 @@ const options = {
       // use inline config to avoid Babel attempting to load an ESM config file asynchronously
       babelHelpers: 'runtime',
       exclude: TRANSPILE_ALL_DEPENDENCIES
-        ? undefined
+        ? [BABEL_RUNTIME_DEPENDENCIES]
         : [
+            BABEL_RUNTIME_DEPENDENCIES,
             /node_modules[\\/](?!codemirror[\\/]src[\\/]|crypto-js|dompurify|parse5|lodash-es|d3-.*[\\/]src|d3[\\/]src|dagre-d3-es)/,
           ],
       babelrc: false,

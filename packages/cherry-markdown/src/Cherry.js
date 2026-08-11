@@ -47,9 +47,16 @@ import { urlProcessorProxy } from './UrlCache';
 import { CherryStatic } from './CherryStatic';
 import { LIST_CONTENT } from '@/utils/regexp';
 import WysiwygEditor from './WysiwygEditor';
+import { SUPER_DOC_CAPABILITIES } from './capabilities';
 
 /** @typedef {import('~types/cherry').CherryOptions} CherryOptions */
+/** @type {ReadonlyArray<'edit&preview'|'editOnly'|'previewOnly'|'wysiwyg'>} */
+const EDITOR_MODES = ['edit&preview', 'editOnly', 'previewOnly', 'wysiwyg'];
+
 export default class Cherry extends CherryStatic {
+  /** 供嵌入方在运行时精确探测 SuperDoc 契约能力。 */
+  static capabilities = SUPER_DOC_CAPABILITIES;
+
   /**
    * @protected
    */
@@ -137,6 +144,8 @@ export default class Cherry extends CherryStatic {
     this.$event = new Event(this.instanceId);
     // WYSIWYG 懒初始化是异步的；序号确保快速切换时只有最后一次请求能提交状态。
     this.modelSwitchSequence = 0;
+    /** @type {'edit&preview'|'editOnly'|'previewOnly'|'wysiwyg'|null} 最后一个已完成初始化并最终提交的模式 */
+    this.committedModel = null;
     this.wysiwygInitPromise = null;
 
     if (this.options.engine.global.flowSessionCursor === 'default') {
@@ -293,6 +302,7 @@ export default class Cherry extends CherryStatic {
   destroy() {
     // 让仍在等待的 WYSIWYG 切换失效，避免销毁后由迟到 Promise 回写 DOM/状态。
     this.modelSwitchSequence += 1;
+    [this.toolbar, this.toolbarRight, this.sidebar, this.hiddenToolbar].forEach((toolbar) => toolbar?.destroy?.());
     this.engine?.destroy();
     if (this.wysiwygEditor) {
       this.wysiwygEditor.destroy();
@@ -396,13 +406,19 @@ export default class Cherry extends CherryStatic {
    */
   switchModel(model = 'edit&preview', showToolbar = true) {
     let isShowToolbar = showToolbar;
-    const currentModel = this.$getCurrentModel();
-    if (this.options.callback?.beforeSwitchModel?.(model, currentModel) === false) {
+    // 非法值不属于模式门禁契约，必须在 sequence 和任何内容/DOM 操作前拒绝。
+    if (!EDITOR_MODES.includes(model)) return Promise.resolve(false);
+    const previousMode = this.$getCurrentModel();
+    if (this.options.callback?.beforeSwitchModel?.(model, previousMode) === false) {
       return Promise.resolve(false);
+    }
+    // 重复请求已提交模式时是幂等成功；无新提交，因此不发 modeCommitted。
+    if (this.committedModel === model && previousMode === model && !this.wysiwygInitPromise) {
+      return Promise.resolve(true);
     }
     this.modelSwitchSequence += 1;
     const switchSequence = this.modelSwitchSequence;
-    let completion = Promise.resolve(true);
+    let completion = null;
 
     // 非 WYSIWYG 请求必须立即隐藏容器，包括 WYS 正在异步初始化、status 尚未变更的窗口。
     if (model !== 'wysiwyg') {
@@ -432,13 +448,29 @@ export default class Cherry extends CherryStatic {
         }
         break;
       case 'wysiwyg':
-        completion = this.$switchToWysiwyg(switchSequence);
+        completion = this.$switchToWysiwyg(switchSequence, previousMode);
         break;
       default:
-        completion = Promise.resolve(false);
+        return Promise.resolve(false);
     }
-    this.toolbar && this.toolbar.showOrHideToolbar(isShowToolbar);
-    return completion;
+
+    // 同步模式在 DOM/status 都完成后立即提交；如果事件回调中已发起更新请求，则本请求失效。
+    if (!completion) {
+      if (switchSequence !== this.modelSwitchSequence) return Promise.resolve(false);
+      this.toolbar?.showOrHideToolbar(isShowToolbar);
+      this.committedModel = model;
+      this.$event.emit('modeCommitted', { mode: model, previousMode });
+      return Promise.resolve(true);
+    }
+
+    // WYSIWYG 初始化期间先保持原模式选中态；只有当前请求成功后才通知外部。
+    return completion.then((committed) => {
+      if (committed !== true || switchSequence !== this.modelSwitchSequence) return false;
+      this.toolbar?.showOrHideToolbar(isShowToolbar);
+      this.committedModel = model;
+      this.$event.emit('modeCommitted', { mode: model, previousMode });
+      return true;
+    });
   }
 
   /**
@@ -457,7 +489,7 @@ export default class Cherry extends CherryStatic {
    * 切换到所见即所得模式
    * @private
    */
-  async $switchToWysiwyg(switchSequence = this.modelSwitchSequence) {
+  async $switchToWysiwyg(switchSequence = this.modelSwitchSequence, previousMode = this.$getCurrentModel()) {
     if (!this.options.wysiwyg?.enabled) {
       Logger.warn(
         'WYSIWYG mode is not enabled. Use Cherry.usePlugin(MilkdownWysiwygPlugin, { Crepe }) before instantiation.',
@@ -520,10 +552,16 @@ export default class Cherry extends CherryStatic {
       if (switchSequence !== this.modelSwitchSequence) return false;
       Logger.warn('WYSIWYG init failed, falling back to edit&preview');
       this.wysiwygDom.classList.add('cherry-wysiwyg--hidden');
-      this.editor.options.editorDom.classList.remove('cherry-editor--hidden');
-      this.previewer.options.previewerDom.classList.remove('cherry-previewer--hidden');
-      this.previewer.options.virtualDragLineDom.classList.remove('cherry-drag--hidden');
-      this.switchModel('edit&preview');
+      this.status.wysiwyg = 'hide';
+      this.$hideWysiwygSwitchBtn();
+      this.$toggleWysiwygToolbarButtons(true);
+      if (previousMode === 'editOnly') {
+        this.previewer.editOnly();
+      } else if (previousMode === 'previewOnly') {
+        this.previewer.previewOnly();
+      } else {
+        this.previewer.editAndPreview();
+      }
       return false;
     }
 
@@ -578,11 +616,7 @@ export default class Cherry extends CherryStatic {
    */
   $toggleWysiwygToolbarButtons(show) {
     if (!this.toolbar?.menus?.hooks) return;
-    const unsupported = [
-      'proTable',
-      'mobilePreview', 'switchModel', 'publish',
-      'togglePreview', 'search',
-    ];
+    const unsupported = ['proTable', 'mobilePreview', 'switchModel', 'publish', 'togglePreview', 'search'];
     const hooks = this.toolbar.menus.hooks;
     for (const name of unsupported) {
       if (hooks[name]?.dom) {
@@ -889,6 +923,9 @@ export default class Cherry extends CherryStatic {
     if ($type === false) {
       return false;
     }
+    [this.toolbar, this.toolbarRight, this.sidebar, this.hiddenToolbar].forEach((toolbarInstance) =>
+      toolbarInstance?.destroy?.(),
+    );
     if (this.toolbarContainer) {
       this.toolbarContainer.innerHTML = '';
     }

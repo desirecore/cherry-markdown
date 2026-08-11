@@ -108,22 +108,62 @@ export default class Toolbar {
   }
 
   init() {
-    this.$cherry.$event.on('cleanAllSubMenus', () => this.hideAllSubMenu());
+    this.$handleCleanAllSubMenus = () => this.hideAllSubMenu();
+    this.$handleModeCommitted = (payload) => this.$syncModeControls(payload?.mode);
+    this.$handleDocumentClick = (e) => {
+      const target = e.target instanceof Element ? e.target : null;
+      if (
+        this.currentActiveSubMenu &&
+        !target?.closest('.cherry-dropdown') &&
+        !target?.closest('.cherry-toolbar-button')
+      ) {
+        this.hideAllSubMenu();
+      }
+    };
+    this.$cherry.$event.on('cleanAllSubMenus', this.$handleCleanAllSubMenus);
+    this.$cherry.$event.on('modeCommitted', this.$handleModeCommitted);
     // 点击任意非下拉菜单区域时，关闭所有子菜单
-    document.addEventListener(
-      'click',
-      (e) => {
-        const target = e.target instanceof Element ? e.target : null;
-        if (
-          this.currentActiveSubMenu &&
-          !target?.closest('.cherry-dropdown') &&
-          !target?.closest('.cherry-toolbar-button')
-        ) {
-          this.hideAllSubMenu();
+    document.addEventListener('click', this.$handleDocumentClick, true);
+    this.$syncModeControls(this.$cherry.$getCurrentModel?.());
+  }
+
+  /**
+   * 销毁工具栏事件监听，避免重置或销毁编辑器后继续回写旧 DOM。
+   */
+  destroy() {
+    if (this.$handleCleanAllSubMenus) {
+      this.$cherry.$event.off('cleanAllSubMenus', this.$handleCleanAllSubMenus);
+    }
+    if (this.$handleModeCommitted) {
+      this.$cherry.$event.off('modeCommitted', this.$handleModeCommitted);
+    }
+    if (this.$handleDocumentClick) {
+      document.removeEventListener('click', this.$handleDocumentClick, true);
+    }
+    this.$handleCleanAllSubMenus = null;
+    this.$handleModeCommitted = null;
+    this.$handleDocumentClick = null;
+  }
+
+  /**
+   * 以 modeCommitted 为唯一提交信号，同步 Ribbon/下拉菜单的视觉与可访问状态。
+   * @param {'edit&preview'|'editOnly'|'previewOnly'|'wysiwyg'} mode
+   */
+  $syncModeControls(mode) {
+    if (!mode) return;
+    const roots = new Set([this.options.dom, this.$cherry.wrapperDom].filter(Boolean));
+    roots.forEach((root) => {
+      root.querySelectorAll('[data-editor-mode]').forEach((button) => {
+        const selected = button.dataset.editorMode === mode;
+        if (button.classList.contains('cherry-toolbar-button')) {
+          button.classList.toggle('cherry-toolbar-button--selected', selected);
         }
-      },
-      true,
-    );
+        if (button.classList.contains('cherry-dropdown-item')) {
+          button.classList.toggle('cherry-dropdown-item__selected', selected);
+        }
+        button.setAttribute('aria-pressed', String(selected));
+      });
+    });
   }
 
   /**
@@ -287,6 +327,7 @@ export default class Toolbar {
       const isRadioGroup =
         typeof hook.getActiveSubMenuIndex === 'function' &&
         Object.prototype.hasOwnProperty.call(hook.constructor.prototype, 'getActiveSubMenuIndex');
+      const usesCommittedModeState = subConfig.some((item) => Boolean(item.editorMode));
       const groupBtns = [];
 
       subConfig.forEach((item, idx) => {
@@ -294,9 +335,18 @@ export default class Toolbar {
           container.appendChild(createElement('span', 'cherry-toolbar-button cherry-toolbar-split'));
           return;
         }
-        const subBtn = createElement('span', `cherry-toolbar-button cherry-toolbar-${item.iconName || item.name}`, {
-          title: this.$cherry.locale[item.name] || item.name,
-        });
+        const isModeControl = Boolean(item.editorMode);
+        const subBtn = createElement(
+          isModeControl ? 'button' : 'span',
+          `cherry-toolbar-button cherry-toolbar-${item.iconName || item.name}`,
+          {
+            title: this.$cherry.locale[item.name] || item.name,
+            ...(isModeControl ? { type: 'button', 'aria-pressed': 'false' } : {}),
+          },
+        );
+        if (isModeControl) {
+          subBtn.dataset.editorMode = item.editorMode;
+        }
         if (item.iconName) {
           const icon = createElement('i', `ch-icon ch-icon-${item.iconName}`);
           subBtn.appendChild(icon);
@@ -311,9 +361,9 @@ export default class Toolbar {
           (e) => {
             e.stopPropagation();
             this.hideAllSubMenu();
-            item.onclick(e);
+            item.onclick(/** @type {MouseEvent} */ (e));
             // 单选组：点击后更新选中状态
-            if (isRadioGroup) {
+            if (isRadioGroup && !usesCommittedModeState) {
               // 延迟更新，等 switchModel 完成状态变更
               requestAnimationFrame(() => {
                 const activeIdx = hook.getActiveSubMenuIndex(null);
@@ -330,7 +380,7 @@ export default class Toolbar {
       });
 
       // 初始化单选组的激活状态
-      if (isRadioGroup && groupBtns.length > 0) {
+      if (isRadioGroup && groupBtns.length > 0 && !usesCommittedModeState) {
         requestAnimationFrame(() => {
           const activeIdx = hook.getActiveSubMenuIndex(null);
           const activeIndices = Array.isArray(activeIdx) ? activeIdx : [activeIdx];
@@ -339,6 +389,7 @@ export default class Toolbar {
           });
         });
       }
+      this.$syncModeControls(this.$cherry.$getCurrentModel?.());
       return;
     }
 
@@ -471,6 +522,7 @@ export default class Toolbar {
       });
     }
     this.$cherry.wrapperDom.appendChild(this.subMenus[name]);
+    this.$syncModeControls(this.$cherry.$getCurrentModel?.());
   }
 
   /**
@@ -514,7 +566,11 @@ export default class Toolbar {
       const activeIndices = Array.isArray(indices) ? indices : [indices];
 
       subMenu.querySelectorAll('.cherry-dropdown-item').forEach((item, i) => {
-        item.classList.toggle('cherry-dropdown-item__selected', activeIndices.includes(i));
+        const selected = activeIndices.includes(i);
+        item.classList.toggle('cherry-dropdown-item__selected', selected);
+        if (item.hasAttribute('data-editor-mode')) {
+          item.setAttribute('aria-pressed', String(selected));
+        }
       });
     });
   }

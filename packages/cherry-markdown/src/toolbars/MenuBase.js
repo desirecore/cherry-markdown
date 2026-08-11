@@ -25,6 +25,7 @@ import NestedError from '@/utils/error';
  * @property {string=} iconName - 子菜单项图标名称
  * @property {function(MouseEvent): any} onclick - 子菜单项点击事件
  * @property {string=} icon - 子菜单项图标(url)
+ * @property {'edit&preview'|'editOnly'|'previewOnly'|'wysiwyg'=} editorMode - 编辑模式提交标识
  * @property {boolean=} [disabledHideAllSubMenu=false] - 是否禁用后续调用hideAllSubMenu
  */
 
@@ -281,10 +282,14 @@ export default class MenuBase {
       return separator;
     }
 
-    const { name, iconName, icon, onclick } = config;
-    const span = createElement('span', 'cherry-dropdown-item', {
+    const { name, iconName, icon, onclick, editorMode } = config;
+    const span = createElement(editorMode ? 'button' : 'span', 'cherry-dropdown-item', {
       title: this.locale[name] || $e(name),
+      ...(editorMode ? { type: 'button', 'aria-pressed': 'false' } : {}),
     });
+    if (editorMode) {
+      span.dataset.editorMode = editorMode;
+    }
     if (iconName) {
       const iconElement = createElement('i', `ch-icon ch-icon-${iconName}`);
       span.appendChild(iconElement);

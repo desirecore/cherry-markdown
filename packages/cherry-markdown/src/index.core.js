@@ -17,6 +17,7 @@ import Cherry from './Cherry';
 
 import SyntaxHookBase from './core/SyntaxBase';
 import MenuHookBase from './toolbars/MenuBase';
+export { SUPER_DOC_CAPABILITIES } from './capabilities';
 
 // in browser
 if (window) {

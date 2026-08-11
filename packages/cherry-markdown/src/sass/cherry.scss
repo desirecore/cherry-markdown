@@ -130,6 +130,9 @@
   z-index: 13;
 
   &-item {
+    appearance: none;
+    border: 0;
+    font-family: inherit;
     width: calc(100% - 8px);
     padding: var(--dropdown-item-padding);
     text-align: left;
@@ -541,6 +544,10 @@
   }
 
   &-button {
+    appearance: none;
+    border: 0;
+    margin: 0;
+    font-family: inherit;
     float: left;
     display: inline-flex;
     align-items: center;

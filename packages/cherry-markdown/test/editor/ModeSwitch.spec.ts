@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import Cherry from '../../src/Cherry';
+import CherryEvent from '../../src/Event';
 import Previewer from '../../src/Previewer';
 
 type EditorMode = 'edit&preview' | 'editOnly' | 'previewOnly' | 'wysiwyg';
@@ -219,6 +220,150 @@ describe('editor mode DOM state', () => {
     expect(harness.cherry.modelSwitchSequence).toBe(0);
     expectMode(harness, 'edit&preview');
     expect(harness.cherry.toolbar.showOrHideToolbar).not.toHaveBeenCalled();
+    expect(harness.emit).not.toHaveBeenCalledWith('modeCommitted', expect.anything());
+  });
+
+  it('emits one modeCommitted notification after every successful synchronous commit', async () => {
+    const harness = createCherryHarness();
+
+    await expect(harness.cherry.switchModel('editOnly')).resolves.toBe(true);
+    await expect(harness.cherry.switchModel('previewOnly')).resolves.toBe(true);
+    await expect(harness.cherry.switchModel('edit&preview')).resolves.toBe(true);
+
+    expect(harness.emit.mock.calls.filter(([name]) => name === 'modeCommitted')).toEqual([
+      ['modeCommitted', { mode: 'editOnly', previousMode: 'edit&preview' }],
+      ['modeCommitted', { mode: 'previewOnly', previousMode: 'editOnly' }],
+      ['modeCommitted', { mode: 'edit&preview', previousMode: 'previewOnly' }],
+    ]);
+  });
+
+  it('does not notify for a stale WYSIWYG request and only notifies the winning request', async () => {
+    const harness = createCherryHarness();
+
+    const staleWysiwyg = harness.cherry.switchModel('wysiwyg');
+    await expect(harness.cherry.switchModel('editOnly')).resolves.toBe(true);
+    harness.deferred.resolve(true);
+    await expect(staleWysiwyg).resolves.toBe(false);
+
+    expect(harness.emit.mock.calls.filter(([name]) => name === 'modeCommitted')).toEqual([
+      ['modeCommitted', { mode: 'editOnly', previousMode: 'edit&preview' }],
+    ]);
+  });
+
+  it('notifies a successful WYSIWYG commit only after initialization finishes', async () => {
+    const harness = createCherryHarness();
+
+    const completion = harness.cherry.switchModel('wysiwyg');
+    expect(harness.emit).not.toHaveBeenCalledWith('modeCommitted', expect.anything());
+
+    harness.deferred.resolve(true);
+    await expect(completion).resolves.toBe(true);
+
+    expect(harness.emit.mock.calls.filter(([name]) => name === 'modeCommitted')).toEqual([
+      ['modeCommitted', { mode: 'wysiwyg', previousMode: 'edit&preview' }],
+    ]);
+  });
+
+  it('treats an already committed WYSIWYG request as an event-free, content-safe no-op after the gate', async () => {
+    const harness = createCherryHarness();
+    const beforeSwitchModel = vi.fn(() => true);
+    harness.cherry.options.callback.beforeSwitchModel = beforeSwitchModel;
+    const initialCompletion = harness.cherry.switchModel('wysiwyg');
+    harness.deferred.resolve(true);
+    await expect(initialCompletion).resolves.toBe(true);
+    harness.wysiwygEditor.getValue.mockReturnValue('# current milkdown content');
+    harness.cherry.editor.editor.getValue.mockReturnValue('# stale codemirror content');
+    beforeSwitchModel.mockClear();
+    harness.emit.mockClear();
+    harness.cherry.toolbar.showOrHideToolbar.mockClear();
+    harness.wysiwygEditor.getValue.mockClear();
+    harness.wysiwygEditor.setValue.mockClear();
+    harness.cherry.editor.editor.getValue.mockClear();
+    harness.cherry.editor.editor.setValue.mockClear();
+    const sequence = harness.cherry.modelSwitchSequence;
+    const domState = {
+      editor: harness.editorDom.className,
+      previewer: harness.previewerDom.className,
+      drag: harness.dragDom.className,
+      wysiwyg: harness.wysiwygDom.className,
+    };
+
+    await expect(harness.cherry.switchModel('wysiwyg')).resolves.toBe(true);
+
+    expect(beforeSwitchModel).toHaveBeenCalledOnce();
+    expect(beforeSwitchModel).toHaveBeenCalledWith('wysiwyg', 'wysiwyg');
+    expect(harness.cherry.modelSwitchSequence).toBe(sequence);
+    expect(harness.cherry.editor.editor.getValue).not.toHaveBeenCalled();
+    expect(harness.cherry.editor.editor.setValue).not.toHaveBeenCalled();
+    expect(harness.wysiwygEditor.getValue).not.toHaveBeenCalled();
+    expect(harness.wysiwygEditor.setValue).not.toHaveBeenCalled();
+    expect(harness.cherry.toolbar.showOrHideToolbar).not.toHaveBeenCalled();
+    expect(harness.emit).not.toHaveBeenCalledWith('modeCommitted', expect.anything());
+    expect({
+      editor: harness.editorDom.className,
+      previewer: harness.previewerDom.className,
+      drag: harness.dragDom.className,
+      wysiwyg: harness.wysiwygDom.className,
+    }).toEqual(domState);
+    expectMode(harness, 'wysiwyg');
+  });
+
+  it('lets beforeSwitchModel reject an already committed WYSIWYG request without side effects', async () => {
+    const harness = createCherryHarness();
+    const initialCompletion = harness.cherry.switchModel('wysiwyg');
+    harness.deferred.resolve(true);
+    await expect(initialCompletion).resolves.toBe(true);
+    const sequence = harness.cherry.modelSwitchSequence;
+    const beforeSwitchModel = vi.fn(() => false);
+    harness.cherry.options.callback.beforeSwitchModel = beforeSwitchModel;
+    harness.emit.mockClear();
+
+    await expect(harness.cherry.switchModel('wysiwyg')).resolves.toBe(false);
+
+    expect(beforeSwitchModel).toHaveBeenCalledWith('wysiwyg', 'wysiwyg');
+    expect(harness.cherry.modelSwitchSequence).toBe(sequence);
+    expect(harness.emit).not.toHaveBeenCalledWith('modeCommitted', expect.anything());
+    expectMode(harness, 'wysiwyg');
+  });
+
+  it('rejects an invalid mode before sequence, WYSIWYG content, DOM, or toolbar side effects', async () => {
+    const harness = createCherryHarness();
+    const initialCompletion = harness.cherry.switchModel('wysiwyg');
+    harness.deferred.resolve(true);
+    await expect(initialCompletion).resolves.toBe(true);
+    const beforeSwitchModel = vi.fn();
+    harness.cherry.options.callback.beforeSwitchModel = beforeSwitchModel;
+    harness.emit.mockClear();
+    harness.cherry.toolbar.showOrHideToolbar.mockClear();
+    harness.wysiwygEditor.getValue.mockClear();
+    harness.wysiwygEditor.setValue.mockClear();
+    harness.cherry.editor.editor.setValue.mockClear();
+    const sequence = harness.cherry.modelSwitchSequence;
+    const status = { ...harness.cherry.status };
+    const domState = {
+      editor: harness.editorDom.className,
+      previewer: harness.previewerDom.className,
+      drag: harness.dragDom.className,
+      wysiwyg: harness.wysiwygDom.className,
+    };
+
+    await expect(harness.cherry.switchModel('invalid' as any)).resolves.toBe(false);
+
+    expect(beforeSwitchModel).not.toHaveBeenCalled();
+    expect(harness.cherry.modelSwitchSequence).toBe(sequence);
+    expect(harness.wysiwygEditor.getValue).not.toHaveBeenCalled();
+    expect(harness.wysiwygEditor.setValue).not.toHaveBeenCalled();
+    expect(harness.cherry.editor.editor.setValue).not.toHaveBeenCalled();
+    expect(harness.cherry.toolbar.showOrHideToolbar).not.toHaveBeenCalled();
+    expect(harness.emit).not.toHaveBeenCalledWith('modeCommitted', expect.anything());
+    expect(harness.cherry.status).toEqual(status);
+    expect({
+      editor: harness.editorDom.className,
+      previewer: harness.previewerDom.className,
+      drag: harness.dragDom.className,
+      wysiwyg: harness.wysiwygDom.className,
+    }).toEqual(domState);
+    expectMode(harness, 'wysiwyg');
   });
 
   it.each<EditorMode>(['edit&preview', 'editOnly', 'previewOnly', 'wysiwyg'])(
@@ -253,10 +398,14 @@ describe('editor mode DOM state', () => {
     expect(harness.instances[0].destroy).toHaveBeenCalledOnce();
     expectMode(harness, 'edit&preview');
 
+    harness.emit.mockClear();
     await expect(harness.cherry.switchModel('wysiwyg')).resolves.toBe(true);
     expect(harness.instances).toHaveLength(2);
     expect(harness.cherry.wysiwygEditor?.initialized).toBe(true);
     expectMode(harness, 'wysiwyg');
+    expect(harness.emit.mock.calls.filter(([name]) => name === 'modeCommitted')).toEqual([
+      ['modeCommitted', { mode: 'wysiwyg', previousMode: 'edit&preview' }],
+    ]);
 
     harness.cherry.wysiwygEditor?.destroy();
   });
@@ -271,6 +420,51 @@ describe('editor mode DOM state', () => {
     expect(harness.instances.every((instance) => instance.destroy.mock.calls.length === 1)).toBe(true);
     expect(harness.cherry.wysiwygEditor).toBeNull();
     expectMode(harness, 'edit&preview');
+    expect(harness.emit).not.toHaveBeenCalledWith('modeCommitted', expect.anything());
+  });
+
+  it('restores the exact previous mode without a commit notification when WYSIWYG initialization fails', async () => {
+    const harness = createLazyWysiwygHarness(['failure']);
+    await expect(harness.cherry.switchModel('editOnly')).resolves.toBe(true);
+    harness.emit.mockClear();
+    harness.cherry.toolbar.showOrHideToolbar.mockClear();
+
+    await expect(harness.cherry.switchModel('wysiwyg')).resolves.toBe(false);
+
+    expectMode(harness, 'editOnly');
+    expect(harness.emit).not.toHaveBeenCalledWith('modeCommitted', expect.anything());
+    expect(harness.cherry.toolbar.showOrHideToolbar).not.toHaveBeenCalled();
+  });
+
+  it('binds options.event.modeCommitted to the public event payload', () => {
+    const modeCommitted = vi.fn();
+    const event = new CherryEvent('mode-contract');
+    event.bindCallbacksByOptions({
+      callback: {},
+      event: { modeCommitted },
+    });
+
+    const payload = { mode: 'previewOnly', previousMode: 'edit&preview' };
+    event.emit('modeCommitted', payload);
+
+    expect(modeCommitted).toHaveBeenCalledOnce();
+    expect(modeCommitted).toHaveBeenCalledWith(payload);
+  });
+
+  it('supports public cherry.on/off subscriptions for modeCommitted', () => {
+    const event = new CherryEvent('mode-on-off-contract');
+    const cherry = Object.create(Cherry.prototype) as Cherry & Record<string, any>;
+    cherry.$event = event;
+    const listener = vi.fn();
+    const payload = { mode: 'previewOnly', previousMode: 'edit&preview' };
+
+    cherry.on('modeCommitted', listener);
+    event.emit('modeCommitted', payload);
+    cherry.off('modeCommitted', listener);
+    event.emit('modeCommitted', { mode: 'editOnly', previousMode: 'previewOnly' });
+
+    expect(listener).toHaveBeenCalledOnce();
+    expect(listener).toHaveBeenCalledWith(payload);
   });
 
   it('refreshes a hidden preview, executes mounted callbacks, and waits for async rendering', async () => {
