@@ -886,7 +886,7 @@ export default class Previewer {
 
   $removeModelClass() {
     this.editor?.options?.editorDom?.classList?.remove('cherry-editor--hidden', 'cherry-editor--full');
-    this.options.previewerDom.classList.remove('cherry-previewer--hidden', 'cherry-preview--full');
+    this.options.previewerDom.classList.remove('cherry-previewer--hidden', 'cherry-previewer--full');
     this.options.virtualDragLineDom.classList.remove('cherry-drag--hidden');
   }
 

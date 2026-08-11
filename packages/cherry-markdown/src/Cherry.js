@@ -135,6 +135,9 @@ export default class Cherry extends CherryStatic {
     this.options.instanceId = this.instanceId;
     this.lastMarkdownText = '';
     this.$event = new Event(this.instanceId);
+    // WYSIWYG 懒初始化是异步的；序号确保快速切换时只有最后一次请求能提交状态。
+    this.modelSwitchSequence = 0;
+    this.wysiwygInitPromise = null;
 
     if (this.options.engine.global.flowSessionCursor === 'default') {
       this.options.engine.global.flowSessionCursor = '<span class="cherry-flow-session-cursor"></span>';
@@ -288,6 +291,8 @@ export default class Cherry extends CherryStatic {
   }
 
   destroy() {
+    // 让仍在等待的 WYSIWYG 切换失效，避免销毁后由迟到 Promise 回写 DOM/状态。
+    this.modelSwitchSequence += 1;
     if (this.wysiwygEditor) {
       this.wysiwygEditor.destroy();
       this.wysiwygEditor = null;
@@ -386,13 +391,22 @@ export default class Cherry extends CherryStatic {
    * @param {'edit&preview'|'editOnly'|'previewOnly'|'wysiwyg'} [model=edit&preview] 模式类型
    * 一般纯预览模式和纯编辑模式适合在屏幕较小的终端使用，比如手机移动端
    * wysiwyg: 所见即所得模式，基于 Milkdown 实现，需要通过 usePlugin 注册 MilkdownWysiwygPlugin
+   * @returns {Promise<boolean>} 该请求最终提交时为 true；被门禁拒绝、失效或初始化失败时为 false
    */
   switchModel(model = 'edit&preview', showToolbar = true) {
     let isShowToolbar = showToolbar;
+    const currentModel = this.$getCurrentModel();
+    if (this.options.callback?.beforeSwitchModel?.(model, currentModel) === false) {
+      return Promise.resolve(false);
+    }
+    this.modelSwitchSequence += 1;
+    const switchSequence = this.modelSwitchSequence;
+    let completion = Promise.resolve(true);
 
-    // 如果当前处于 WYSIWYG 模式，切换回其他模式时需要同步内容
-    if (this.status.wysiwyg === 'show' && model !== 'wysiwyg') {
-      if (this.wysiwygEditor) {
+    // 非 WYSIWYG 请求必须立即隐藏容器，包括 WYS 正在异步初始化、status 尚未变更的窗口。
+    if (model !== 'wysiwyg') {
+      // 如果当前已处于 WYSIWYG 模式，切换回其他模式时需要同步内容。
+      if (this.status.wysiwyg === 'show' && this.wysiwygEditor) {
         const mdFromWysiwyg = this.wysiwygEditor.getValue();
         this.editor.editor.setValue(mdFromWysiwyg);
       }
@@ -417,22 +431,37 @@ export default class Cherry extends CherryStatic {
         }
         break;
       case 'wysiwyg':
-        this.$switchToWysiwyg();
+        completion = this.$switchToWysiwyg(switchSequence);
         break;
+      default:
+        completion = Promise.resolve(false);
     }
     this.toolbar && this.toolbar.showOrHideToolbar(isShowToolbar);
+    return completion;
+  }
+
+  /**
+   * 从当前状态推导公开编辑模式。
+   * @private
+   * @returns {'edit&preview'|'editOnly'|'previewOnly'|'wysiwyg'}
+   */
+  $getCurrentModel() {
+    if (this.status.wysiwyg === 'show') return 'wysiwyg';
+    if (this.status.editor === 'show' && this.status.previewer === 'hide') return 'editOnly';
+    if (this.status.editor === 'hide' && this.status.previewer === 'show') return 'previewOnly';
+    return 'edit&preview';
   }
 
   /**
    * 切换到所见即所得模式
    * @private
    */
-  async $switchToWysiwyg() {
+  async $switchToWysiwyg(switchSequence = this.modelSwitchSequence) {
     if (!this.options.wysiwyg?.enabled) {
       Logger.warn(
         'WYSIWYG mode is not enabled. Use Cherry.usePlugin(MilkdownWysiwygPlugin, { Crepe }) before instantiation.',
       );
-      return;
+      return false;
     }
 
     // 从 CodeMirror 获取当前内容
@@ -447,24 +476,62 @@ export default class Cherry extends CherryStatic {
     this.wysiwygDom.classList.remove('cherry-wysiwyg--hidden');
 
     // 懒初始化或更新内容
+    let initResult = true;
+    let shouldApplyValueAfterInit = false;
     if (!this.wysiwygEditor) {
       this.wysiwygEditor = new WysiwygEditor({
         $cherry: this,
         editorDom: this.wysiwygDom,
         value: markdown,
       });
-      const result = await this.wysiwygEditor.init();
-      if (result === false) {
-        Logger.warn('WYSIWYG init failed, falling back to edit&preview');
-        this.wysiwygDom.classList.add('cherry-wysiwyg--hidden');
-        this.editor.options.editorDom.classList.remove('cherry-editor--hidden');
-        this.previewer.options.previewerDom.classList.remove('cherry-previewer--hidden');
-        this.previewer.options.virtualDragLineDom.classList.remove('cherry-drag--hidden');
-        this.switchModel('edit&preview');
-        return;
+      this.wysiwygInitPromise = this.wysiwygEditor.init();
+    } else if (this.wysiwygInitPromise) {
+      // 初始化进行中的后续 WYS 请求需在 ready 后应用其捕获的最新源文本。
+      shouldApplyValueAfterInit = true;
+    }
+    // 后续请求或 destroy 可能替换 this.wysiwygEditor；本次请求只提交/清理自己捕获的实例。
+    const targetWysiwygEditor = this.wysiwygEditor;
+
+    if (this.wysiwygInitPromise) {
+      const pendingInit = this.wysiwygInitPromise;
+      try {
+        initResult = await pendingInit;
+      } catch (error) {
+        Logger.warn('WYSIWYG init failed, falling back to edit&preview', error);
+        initResult = false;
+      } finally {
+        if (this.wysiwygInitPromise === pendingInit) {
+          this.wysiwygInitPromise = null;
+        }
       }
     } else {
-      this.wysiwygEditor.setValue(markdown);
+      targetWysiwygEditor.setValue(markdown);
+    }
+
+    // 只有 create 成功且包装层明确 initialized 后才能提交。失败实例必须先清理并置空，
+    // 即使本次请求已被更新模式淘汰，也要允许下一次 WYS 请求真正重建。
+    if (initResult !== true || targetWysiwygEditor.initialized !== true) {
+      targetWysiwygEditor.destroy();
+      if (this.wysiwygEditor === targetWysiwygEditor) {
+        this.wysiwygEditor = null;
+      }
+      // Promise 完成时若已有更新请求，保留后者已经建立的 DOM、toolbar 与 status。
+      if (switchSequence !== this.modelSwitchSequence) return false;
+      Logger.warn('WYSIWYG init failed, falling back to edit&preview');
+      this.wysiwygDom.classList.add('cherry-wysiwyg--hidden');
+      this.editor.options.editorDom.classList.remove('cherry-editor--hidden');
+      this.previewer.options.previewerDom.classList.remove('cherry-previewer--hidden');
+      this.previewer.options.virtualDragLineDom.classList.remove('cherry-drag--hidden');
+      this.switchModel('edit&preview');
+      return false;
+    }
+
+    // Promise 完成时若已有更新请求，保留后者已经建立的 DOM、toolbar 与 status。
+    if (switchSequence !== this.modelSwitchSequence) return false;
+
+    // 多个 WYS 请求复用同一个初始化 Promise；初始化完成后应用最后请求捕获的内容。
+    if (shouldApplyValueAfterInit) {
+      targetWysiwygEditor.setValue(markdown);
     }
 
     // 隐藏 WYSIWYG 模式下不支持的工具栏按钮
@@ -474,6 +541,7 @@ export default class Cherry extends CherryStatic {
     this.status.wysiwyg = 'show';
     this.$event.emit('editorClose');
     this.$event.emit('previewerClose');
+    return true;
   }
 
   /**
@@ -667,16 +735,54 @@ export default class Cherry extends CherryStatic {
   }
 
   /**
-   * 强制重新渲染预览区域
+   * 强制使用当前 Markdown 重新渲染预览区域（包括隐藏预览）。
+   * Promise 在 DOM 已替换、mounted hooks 已执行且当次异步渲染完成后 resolve true；
+   * 异步渲染超时时 resolve false，避免导出链路永久挂起。
+   * @returns {Promise<boolean>}
    */
   refreshPreviewer() {
-    try {
-      const markdownText = this.getValue();
-      const html = this.engine.makeHtml(markdownText);
-      this.previewer.refresh(html);
-    } catch (e) {
-      throw new NestedError(e);
-    }
+    const markdownText = this.getValue();
+
+    return new Promise((resolve, reject) => {
+      let mounted = false;
+      let renderCompleted = false;
+      let settled = false;
+
+      const finish = () => {
+        if (settled || !mounted || !renderCompleted) return;
+        settled = true;
+        clearTimeout(asyncRenderTimeout);
+        this.$event.off('afterAsyncRender', handleAsyncRender);
+        resolve(true);
+      };
+      const handleAsyncRender = (msg) => {
+        if (msg?.markdownText !== markdownText) return;
+        renderCompleted = true;
+        finish();
+      };
+
+      this.$event.on('afterAsyncRender', handleAsyncRender);
+      const asyncRenderTimeout = setTimeout(() => {
+        if (settled) return;
+        settled = true;
+        this.$event.off('afterAsyncRender', handleAsyncRender);
+        resolve(false);
+      }, 10000);
+      try {
+        const html = this.engine.makeHtml(markdownText);
+        this.previewer.refresh(html);
+        // 防止下次打开预览时被先前的隐藏态缓存覆盖。
+        this.previewer.cleanHtmlCache();
+        this.previewer.afterUpdate();
+        mounted = true;
+        finish();
+      } catch (e) {
+        settled = true;
+        clearTimeout(asyncRenderTimeout);
+        this.$event.off('afterAsyncRender', handleAsyncRender);
+        reject(new NestedError(e));
+      }
+    });
   }
 
   /**
