@@ -982,13 +982,24 @@
 
   .CodeMirror {
     font-family: var(--font-family-sans);
+    font-size: var(--editor-content-font-size);
+    line-height: var(--editor-content-line-height);
     background-color: var(--base-editor-bg);
     color: var(--base-font-color);
 
     // codemirror 依赖隐藏的 textarea 计算行高，这里将字体大小设置为行高，避免输入法遮挡内容
     // Fixed https://github.com/Tencent/cherry-markdown/issues/82
     textarea {
-      font-size: var(--md-paragraph-line-height);
+      font-size: var(--editor-content-line-height);
+    }
+
+    .CodeMirror-gutters,
+    .CodeMirror-linenumber {
+      line-height: var(--editor-content-line-height);
+    }
+
+    .CodeMirror-linenumber {
+      font-size: var(--editor-gutter-font-size);
     }
 
     .CodeMirror-cursor {
@@ -1028,7 +1039,7 @@
   }
 
   .CodeMirror-lines {
-    padding: 15px 34px;
+    padding: var(--editor-split-padding-block) var(--editor-split-padding-inline);
 
     // 对draw.io的xml数据，和图片里base64格式的数据限定最大宽度
     .long-text,
@@ -1051,6 +1062,10 @@
     .cm-invalidchar[title="\\\\u200b"] {
       display: none;
     }
+  }
+
+  &.cherry-editor--full .CodeMirror-lines {
+    padding: var(--editor-full-padding-block) var(--editor-full-padding-inline);
   }
 
   .cm-s-default .cm-header {
@@ -1130,27 +1145,33 @@
   position: relative;
   box-sizing: border-box;
 
-  &.cherry-wysiwyg--hidden {
-    display: none;
+  // 保留 Milkdown/Crepe 原生字体、配色和控件，仅统一正文密度与页面留白。
+  .milkdown {
+    min-height: 100%;
   }
 
-  /* 引用块样式 — 覆盖 Milkdown Crepe 默认样式，与预览区保持一致 */
-  blockquote {
-    padding: 10px 15px;
-    border-left: 10px solid var(--md-hr-border, var(--primary-color));
-    background: var(--md-blockquote-bg, rgba(102, 128, 153, 0.05));
-    color: var(--md-paragraph-color);
-    margin: 0 0 var(--spacing-lg, 16px);
-    box-sizing: border-box;
-    position: static;
+  .milkdown .ProseMirror {
+    min-height: 100%;
+    padding: var(--wysiwyg-content-padding-block) var(--wysiwyg-content-padding-inline);
+    font-size: var(--editor-content-font-size);
+    line-height: var(--editor-content-line-height);
 
-    &::before {
-      display: none;
+    // Crepe 为段落显式设置 16px，需保留该规则才能与根级列表/表格统一。
+    p {
+      font-size: var(--editor-content-font-size);
+      line-height: var(--editor-content-line-height);
     }
 
-    p, blockquote, table, pre, ul, ol {
-      margin: 0;
-    }
+    h1 { font-size: 32px; line-height: 40px; margin-top: var(--editor-content-block-gap); }
+    h2 { font-size: 26px; line-height: 34px; margin-top: var(--editor-content-block-gap); }
+    h3 { font-size: 22px; line-height: 30px; margin-top: var(--editor-content-block-gap); }
+    h4 { font-size: 19px; line-height: 27px; margin-top: var(--editor-content-block-gap); }
+    h5 { font-size: 17px; line-height: 25px; margin-top: var(--editor-content-block-gap); }
+    h6 { font-size: 15px; line-height: 24px; margin-top: var(--editor-content-block-gap); }
+  }
+
+  &.cherry-wysiwyg--hidden {
+    display: none;
   }
 
   /* mermaid 图表宽度优化 — 收缩到内容宽度，与预览模式一致 */
@@ -1921,10 +1942,12 @@
 }
 
 .cherry-previewer {
-  padding: 20px 45px 20px 20px;
+  padding: var(--editor-split-padding-block) var(--editor-split-padding-inline);
   border-left: 2px solid var(--drag-border-color);
   width: 50%;
   box-sizing: border-box;
+  font-size: var(--editor-content-font-size);
+  line-height: var(--editor-content-line-height);
   background-color: var(--base-previewer-bg);
   min-height: auto;
   overflow-y: auto;
@@ -1949,6 +1972,40 @@
 
   &.cherry-previewer--full {
     width: 100%;
+    padding: var(--editor-full-padding-block) var(--editor-full-padding-inline);
+  }
+
+  // 仅收紧编辑器预览面板，不改变独立消费 .cherry-markdown 的聊天消息样式。
+  h1 { font-size: 32px; line-height: 40px; }
+  h2 { font-size: 26px; line-height: 34px; }
+  h3 { font-size: 22px; line-height: 30px; }
+  h4 { font-size: 19px; line-height: 27px; }
+  h5 { font-size: 17px; line-height: 25px; }
+  h6 { font-size: 15px; line-height: 24px; }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    margin-top: var(--editor-content-block-gap);
+    margin-bottom: var(--spacing-sm);
+  }
+
+  p,
+  pre,
+  blockquote,
+  table,
+  ul,
+  ol,
+  figure,
+  div[data-type='codeBlock'] {
+    margin-bottom: var(--editor-content-block-gap);
+  }
+
+  hr {
+    margin: var(--editor-content-block-gap) 0;
   }
 
   .cherry-list__upper-roman {

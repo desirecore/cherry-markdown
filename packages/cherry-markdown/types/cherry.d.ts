@@ -59,6 +59,10 @@ type CherryCustomOptions = {
 
 export interface Cherry<T extends CherryCustomOptions = CherryCustomOptions> {
   options: CherryOptions<T>;
+  /** 切换编辑模式；返回该请求是否最终提交。 */
+  switchModel(model?: EditorMode, showToolbar?: boolean): Promise<boolean>;
+  /** 用当前 Markdown 刷新预览 DOM，并等待 mounted hooks 及异步渲染完成；超时返回 false。 */
+  refreshPreviewer(): Promise<boolean>;
 }
 
 export type CherryOptions<T extends CherryCustomOptions = CherryCustomOptions> = Partial<_CherryOptions<T>>;
@@ -163,6 +167,8 @@ export interface _CherryOptions<T extends CherryCustomOptions = CherryCustomOpti
     beforeImageMounted?: (srcProp: string, src: string) => { srcProp: string; src: string };
     /** 点击预览区域时触发，返回 false 可阻止后续处理 */
     onClickPreview?: (e: MouseEvent) => void | false;
+    /** 切换模式前触发，返回 false 可阻止切换。 */
+    beforeSwitchModel?: (target: EditorMode, current: EditorMode) => boolean | void;
     onCopyCode?: (e: ClipboardEvent, code: string) => string | false;
     changeString2Pinyin?: (str: string) => string;
     onPaste?: (

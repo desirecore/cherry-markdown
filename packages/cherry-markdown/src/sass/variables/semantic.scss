@@ -83,6 +83,22 @@
   --editor-selection-bg: var(--oc-blue-1);
   --editor-line-number-color: var(--oc-gray-4);
   --editor-active-line-bg: var(--oc-gray-0);
+
+  // 四种编辑模式共用排版密度；颜色与字体家族仍由各自引擎负责。
+  --editor-content-font-size: 15px;
+  --editor-content-line-height: 24px;
+  --editor-gutter-font-size: 13px;
+  --editor-content-block-gap: var(--spacing-md);
+
+  // 双栏半宽优先保留横向工作区，单栏则给正文稍多的呼吸空间。
+  --editor-split-padding-block: var(--spacing-md);
+  --editor-split-padding-inline: var(--spacing-lg);
+  --editor-full-padding-block: var(--spacing-lg);
+  --editor-full-padding-inline: clamp(var(--spacing-lg), 2vw, var(--spacing-xl));
+
+  // 所见即所得保留 Milkdown/Crepe 原生质感，只压缩页面留白。
+  --wysiwyg-content-padding-block: clamp(20px, 2vw, var(--spacing-xl));
+  --wysiwyg-content-padding-inline: clamp(var(--spacing-xl), 4vw, var(--spacing-3xl));
   
   /* ========== 预览器相关 ========== */
   // --base-previewer-bg 预览器背景颜色

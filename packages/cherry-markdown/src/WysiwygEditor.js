@@ -23,6 +23,10 @@ export default class WysiwygEditor {
     /** @type {import('@milkdown/crepe').Crepe | null} */
     this.crepe = null;
     this.initialized = false;
+    // Crepe.create() 是异步的。销毁或重新初始化会推进代次，迟到的 create
+    // 只能清理自己捕获的实例，不能重新注册监听或覆盖新一代编辑器。
+    this._destroyed = false;
+    this._initGeneration = 0;
     this.lastMarkdownText = '';
     /** @type {Map<string, string>} processed URL → original URL */
     this._urlReverseMap = new Map();
@@ -38,6 +42,10 @@ export default class WysiwygEditor {
     if (this.initialized) {
       return false;
     }
+
+    this._destroyed = false;
+    this._initGeneration += 1;
+    const initGeneration = this._initGeneration;
 
     const wysiwygConfig = this.$cherry.options.wysiwyg;
     if (!wysiwygConfig?.Crepe) {
@@ -70,22 +78,23 @@ export default class WysiwygEditor {
     if (!crepeOptions.features) crepeOptions.features = {};
     crepeOptions.features['image-block'] = false;
 
-    this.crepe = new CrepeClass({
+    const crepe = new CrepeClass({
       root: this.editorDom,
       defaultValue: this.preprocessMarkdown(this.value),
       ...crepeOptions,
     });
+    this.crepe = crepe;
 
     // 注册自定义 WYSIWYG 插件 (sup/sub/underline/highlight marks)
     const customPlugins = wysiwygConfig.customPlugins;
     if (customPlugins && Array.isArray(customPlugins)) {
       for (const plugin of customPlugins) {
-        this.crepe.editor.use(plugin);
+        crepe.editor.use(plugin);
       }
     }
 
     // 注册内容变化监听
-    this.crepe.on((listener) => {
+    crepe.on((listener) => {
       listener.markdownUpdated((ctx, markdown) => {
         const processed = this.postprocessMarkdown(markdown);
         if (processed !== this.lastMarkdownText) {
@@ -96,7 +105,22 @@ export default class WysiwygEditor {
       });
     });
 
-    await this.crepe.create();
+    try {
+      await crepe.create();
+    } catch (error) {
+      const isCurrentInit = this._isCurrentInit(initGeneration, crepe);
+      this._disposeCrepe(crepe);
+      if (!isCurrentInit) return false;
+      throw error;
+    }
+
+    if (!this._isCurrentInit(initGeneration, crepe)) {
+      // destroy() 可能在 create() pending 时先返回；create 迟到完成后必须再清理一次，
+      // 防止 Crepe 在首次 destroy 之后才挂载资源。
+      this._disposeCrepe(crepe);
+      return false;
+    }
+
     this.initialized = true;
     this.lastMarkdownText = this.value;
 
@@ -160,7 +184,66 @@ export default class WysiwygEditor {
     };
     this.editorDom.addEventListener('scroll', this._onScroll, true);
 
+    // 正常 JavaScript 调用栈中注册过程不会被打断；保留最终复核也能覆盖测试替身、
+    // 自定义 EventTarget 或未来注册逻辑引入的同步销毁。
+    if (!this._isCurrentInit(initGeneration, crepe)) {
+      this._removeEventListeners();
+      this._disposeCrepe(crepe);
+      return false;
+    }
+
     return true;
+  }
+
+  /**
+   * 判断异步初始化结果是否仍属于当前存活实例。
+   * @private
+   * @param {number} initGeneration
+   * @param {import('@milkdown/crepe').Crepe} crepe
+   * @returns {boolean}
+   */
+  _isCurrentInit(initGeneration, crepe) {
+    return !this._destroyed && this._initGeneration === initGeneration && this.crepe === crepe;
+  }
+
+  /**
+   * 移除 WYSIWYG 包装层注册的所有 DOM / 全局监听。
+   * @private
+   */
+  _removeEventListeners() {
+    if (this._onLinkClick) {
+      this.editorDom.removeEventListener('click', this._onLinkClick);
+      this._onLinkClick = null;
+    }
+    if (this._onSelectionChange) {
+      document.removeEventListener('selectionchange', this._onSelectionChange);
+      this._onSelectionChange = null;
+    }
+    if (this._onDetailToggle) {
+      this.editorDom.removeEventListener('click', this._onDetailToggle);
+      this._onDetailToggle = null;
+    }
+    if (this._onScroll) {
+      this.editorDom.removeEventListener('scroll', this._onScroll, true);
+      this._onScroll = null;
+    }
+  }
+
+  /**
+   * 清理指定 Crepe；只在它仍是当前实例时清空引用。
+   * @private
+   * @param {import('@milkdown/crepe').Crepe} crepe
+   */
+  _disposeCrepe(crepe) {
+    try {
+      crepe.destroy();
+    } catch (error) {
+      Logger.warn('Failed to destroy WYSIWYG Crepe instance', error);
+    }
+    if (this.crepe === crepe) {
+      this.crepe = null;
+      this.initialized = false;
+    }
   }
 
   /**
@@ -904,26 +987,12 @@ export default class WysiwygEditor {
    * 销毁 Milkdown 实例
    */
   destroy() {
-    if (this._onLinkClick) {
-      this.editorDom.removeEventListener('click', this._onLinkClick);
-      this._onLinkClick = null;
-    }
-    if (this._onSelectionChange) {
-      document.removeEventListener('selectionchange', this._onSelectionChange);
-      this._onSelectionChange = null;
-    }
-    if (this._onDetailToggle) {
-      this.editorDom.removeEventListener('click', this._onDetailToggle);
-      this._onDetailToggle = null;
-    }
-    if (this._onScroll) {
-      this.editorDom.removeEventListener('scroll', this._onScroll, true);
-      this._onScroll = null;
-    }
-    if (this.crepe) {
-      this.crepe.destroy();
-      this.crepe = null;
-      this.initialized = false;
-    }
+    this._destroyed = true;
+    this._initGeneration += 1;
+    this.initialized = false;
+    this._removeEventListeners();
+    const crepe = this.crepe;
+    this.crepe = null;
+    if (crepe) this._disposeCrepe(crepe);
   }
 }
