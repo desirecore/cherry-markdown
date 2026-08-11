@@ -1,57 +1,86 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Release script for @desirecore/super-doc
+# Publish an already-versioned, merged @desirecore/super-doc commit.
+# This script never pulls, changes versions, commits, or pushes protected branches.
 # Usage: ./scripts/release.sh <version> [otp]
-# Example: ./scripts/release.sh 0.2.11 123456
 
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 PKG_DIR="$ROOT_DIR/packages/cherry-markdown"
 PKG_JSON="$PKG_DIR/package.json"
-
-# --- Args ---
 VERSION="${1:-}"
 OTP="${2:-}"
+RELEASE_REF="${SUPER_DOC_RELEASE_REF:-origin/dev}"
 
 if [ -z "$VERSION" ]; then
   echo "Usage: $0 <version> [otp]"
-  echo "Example: $0 0.2.11 123456"
   exit 1
 fi
 
-echo "==> Pulling latest code..."
 cd "$ROOT_DIR"
-git pull origin dev
 
-echo "==> Bumping version to $VERSION..."
-sed -i '' "s/\"version\": \"[^\"]*\"/\"version\": \"$VERSION\"/" "$PKG_JSON"
+assert_clean_repository() {
+  if ! git diff --quiet || ! git diff --cached --quiet; then
+    echo "Release aborted: tracked worktree or index changes are present."
+    exit 1
+  fi
+  if [ -n "$(git status --porcelain --untracked-files=normal)" ]; then
+    echo "Release aborted: untracked files are present."
+    exit 1
+  fi
+}
 
-echo "==> Cleaning dist..."
-cd "$PKG_DIR"
-npx rimraf ./dist
+assert_clean_repository
 
-echo "==> Building release artifacts..."
-npx run-s iconfont build:styles build:types build:addons build:full build:core build:engine build:engine-full build:stream build:wysiwyg verify:dist
-
-echo "==> Verifying declared type entrypoint..."
-test -f dist/types/index.d.ts
-
-echo "==> Copying engine type declarations..."
-cp dist/super-doc.engine.core.d.ts dist/super-doc.engine.d.ts
-cp dist/super-doc.engine.core.esm.d.ts dist/super-doc.engine.esm.d.ts
-
-echo "==> Committing and pushing..."
-cd "$ROOT_DIR"
-git add packages/cherry-markdown/package.json
-git commit -m "chore: bump version to $VERSION"
-git push origin dev
-
-echo "==> Publishing to npm..."
-if [ -n "$OTP" ]; then
-  cd "$PKG_DIR" && npm publish --access public --otp "$OTP"
-else
-  echo "No OTP provided. Run the following command with your OTP:"
-  echo "  cd $PKG_DIR && npm publish --access public --otp <your-otp>"
+if ! git rev-parse --verify --quiet "$RELEASE_REF" >/dev/null; then
+  echo "Release aborted: $RELEASE_REF is unavailable. Fetch it outside this script and retry."
+  exit 1
 fi
 
-echo "==> Done! @desirecore/super-doc@$VERSION"
+if ! git merge-base --is-ancestor HEAD "$RELEASE_REF"; then
+  echo "Release aborted: HEAD is not contained in $RELEASE_REF; publish only an already merged commit."
+  exit 1
+fi
+
+PACKAGE_VERSION="$(node -p "require('$PKG_JSON').version")"
+PACKAGE_NAME="$(node -p "require('$PKG_JSON').name")"
+if [ "$PACKAGE_VERSION" != "$VERSION" ]; then
+  echo "Release aborted: requested $VERSION but the merged package version is $PACKAGE_VERSION."
+  exit 1
+fi
+if [ "$PACKAGE_NAME" != "@desirecore/super-doc" ]; then
+  echo "Release aborted: unexpected package name $PACKAGE_NAME."
+  exit 1
+fi
+
+ARTIFACT_DIR="$(mktemp -d "${TMPDIR:-/tmp}/super-doc-release-${VERSION}.XXXXXX")"
+PACK_JSON="$ARTIFACT_DIR/npm-pack.json"
+VERIFICATION_JSON="$ARTIFACT_DIR/verification.json"
+
+echo "==> Building the merged @desirecore/super-doc@$VERSION commit..."
+yarn workspace @desirecore/super-doc build
+
+echo "==> Re-verifying serialized dist artifacts..."
+yarn workspace @desirecore/super-doc verify:dist
+
+echo "==> Packing the exact publish candidate outside the repository..."
+(cd "$PKG_DIR" && npm pack --json --ignore-scripts --pack-destination "$ARTIFACT_DIR") >"$PACK_JSON"
+TARBALL_FILENAME="$(node -e 'const p=require(process.argv[1]); if (!p[0]?.filename) process.exit(1); process.stdout.write(p[0].filename)' "$PACK_JSON")"
+TARBALL="$ARTIFACT_DIR/$TARBALL_FILENAME"
+
+echo "==> Verifying tarball version, entries, CSS, types, capabilities, and integrity..."
+node "$PKG_DIR/build/verify-pack.js" "$PACK_JSON" "$VERSION" "$PKG_DIR" | tee "$VERIFICATION_JSON"
+
+# The build may create ignored dist files, but it must never rewrite tracked or add untracked repository content.
+assert_clean_repository
+
+if [ -n "$OTP" ]; then
+  echo "==> Publishing the verified tarball..."
+  npm publish "$TARBALL" --access public --otp "$OTP"
+  echo "==> Published @desirecore/super-doc@$VERSION"
+else
+  echo "No OTP provided; repository state was not changed and nothing was published."
+  echo "Verified publish candidate: $TARBALL"
+  echo "Verification manifest: $VERIFICATION_JSON"
+  echo "Publish these exact bytes with: npm publish \"$TARBALL\" --access public --otp <your-otp>"
+fi

@@ -16,6 +16,7 @@ export default class SwitchWysiwyg extends MenuBase {
   }
 
   $buildSubMenuConfig() {
+    /** @type {{name:string; iconName:string; model:'edit&preview'|'editOnly'|'previewOnly'|'wysiwyg'}[]} */
     const modes = [
       { name: 'modelEditPreview', iconName: 'preview', model: 'edit&preview' },
       { name: 'modelEditOnly', iconName: 'edit', model: 'editOnly' },
@@ -28,6 +29,7 @@ export default class SwitchWysiwyg extends MenuBase {
     return modes.map((item) => ({
       iconName: item.iconName,
       name: item.name,
+      editorMode: item.model,
       onclick: this.bindSubClick.bind(this, item.model),
     }));
   }

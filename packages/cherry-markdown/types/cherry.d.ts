@@ -63,6 +63,20 @@ export interface Cherry<T extends CherryCustomOptions = CherryCustomOptions> {
   switchModel(model?: EditorMode, showToolbar?: boolean): Promise<boolean>;
   /** 用当前 Markdown 刷新预览 DOM，并等待 mounted hooks 及异步渲染完成；超时返回 false。 */
   refreshPreviewer(): Promise<boolean>;
+  on(eventName: 'modeCommitted', callback: (payload: ModeCommittedPayload) => void): void;
+  off(eventName: 'modeCommitted', callback: (payload: ModeCommittedPayload) => void): void;
+}
+
+export interface ModeCommittedPayload {
+  mode: EditorMode;
+  previousMode: EditorMode;
+}
+
+export interface SuperDocCapabilities {
+  readonly modeCommitted: true;
+  readonly asyncModeSwitch: true;
+  readonly awaitableRefreshPreviewer: true;
+  readonly compactLayout: true;
 }
 
 export type CherryOptions<T extends CherryCustomOptions = CherryCustomOptions> = Partial<_CherryOptions<T>>;
@@ -181,6 +195,8 @@ export interface _CherryOptions<T extends CherryCustomOptions = CherryCustomOpti
     onClickToc?: (e: MouseEvent, hash: string) => boolean;
   };
   event: {
+    /** 模式 DOM/status 已最终成功提交；被拒绝、失效或初始化失败不触发。 */
+    modeCommitted?: (payload: ModeCommittedPayload) => void;
     focus?: ({ e: MouseEvent, cherry: Cherry }) => void;
     blur?: ({ e: MouseEvent, cherry: Cherry }) => void;
     /** 编辑器内容改变并完成渲染后触发 */
