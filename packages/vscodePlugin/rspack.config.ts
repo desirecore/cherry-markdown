@@ -2,6 +2,12 @@ import { Configuration } from '@rspack/core';
 import * as path from 'path';
 import * as fs from 'fs';
 
+const argv = process.argv.join(' ');
+const isProduction =
+  argv.includes('--mode production') ||
+  process.env.RSPACK_BUILD_MODE === 'production' ||
+  process.env.NODE_ENV === 'production';
+
 // 构建前清理 dist 目录
 const distPath = path.resolve(__dirname, 'dist');
 if (fs.existsSync(distPath)) {
@@ -58,8 +64,6 @@ const extensionConfig: Configuration = {
 };
 
 // Webview 配置 (浏览器环境)
-const argv = process.argv.join(' ');
-const isProduction = argv.includes('--mode production') || process.env.RSPACK_BUILD_MODE === 'production' || process.env.NODE_ENV === 'production';
 const webviewConfig: Configuration = {
   target: 'web',
   mode: isProduction ? 'production' : 'development',
