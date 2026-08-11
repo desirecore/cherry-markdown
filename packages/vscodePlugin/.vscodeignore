@@ -9,5 +9,5 @@ vsc-extension-quickstart.md
 **/.eslintrc.json
 **/*.map
 **/*.ts
-
-web-resources/scripts/global-vars.js
+web-resources/scripts/index.js
+web-resources/scripts/editor-state.js
