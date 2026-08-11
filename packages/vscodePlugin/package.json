@@ -24,8 +24,20 @@
     "Other"
   ],
   "activationEvents": [
-    "onLanguage:markdown"
+    "onLanguage:markdown",
+    "onCommand:cherrymarkdown.preview"
   ],
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": "limited",
+      "description": "%workspaceTrust.description%",
+      "restrictedConfigurations": [
+        "cherryMarkdown.ImageUploadMode",
+        "cherryMarkdown.CustomUploader",
+        "cherryMarkdown.AssetDirectory"
+      ]
+    }
+  },
   "main": "./dist/extension.js",
   "contributes": {
     "commands": [
@@ -54,7 +66,7 @@
       "distro-ubuntu": {
         "description": "cherry-markdown icon",
         "default": {
-          "fontPath": "./web-resources/dist/ch-icon.woff",
+          "fontPath": "./web-resources/dist/fonts/ch-icon.woff",
           "fontCharacter": "\\ea28"
         }
       }
@@ -64,47 +76,48 @@
       "properties": {
         "cherryMarkdown.Usage": {
           "type": "string",
-          "default": "%usage.enum.active%",
+          "default": "active",
           "enum": [
+            "active",
+            "only-manual"
+          ],
+          "enumItemLabels": [
             "%usage.enum.active%",
             "%usage.enum.only-manual%"
           ],
           "description": "%usage.description%"
         },
-        "cherryMarkdown.Theme": {
+        "cherryMarkdown.ImageUploadMode": {
           "type": "string",
-          "default": "%theme.enum.default%",
+          "default": "workspace",
           "enum": [
-            "%theme.enum.default%",
-            "%theme.enum.dark%",
-            "%theme.enum.green%",
-            "%theme.enum.red%"
+            "workspace",
+            "data",
+            "remote"
           ],
-          "description": "%theme.description%"
-        },
-        "cherryMarkdown.UploadType": {
-          "type": "string",
-          "default": "%uploadType.enum.None%",
-          "enum": [
-            "%uploadType.enum.None%",
-            "%uploadType.enum.CustomUploader%",
-            "%uploadType.enum.PicGoServer%"
+          "enumItemLabels": [
+            "%imageUploadMode.enum.workspace%",
+            "%imageUploadMode.enum.data%",
+            "%imageUploadMode.enum.remote%"
           ],
           "enumDescriptions": [
-            "%uploadType.enumDescriptions.None%",
-            "%uploadType.enumDescriptions.CustomUploader%",
-            "%uploadType.enumDescriptions.PicGoServer%"
+            "%imageUploadMode.enumDescriptions.workspace%",
+            "%imageUploadMode.enumDescriptions.data%",
+            "%imageUploadMode.enumDescriptions.remote%"
           ],
-          "description": "%uploadType.description%"
+          "description": "%imageUploadMode.description%"
+        },
+        "cherryMarkdown.AssetDirectory": {
+          "type": "string",
+          "default": ".cherry-assets",
+          "description": "%assetDirectory.description%"
         },
         "cherryMarkdown.CustomUploader": {
           "type": "object",
           "default": {
-            "enable": true,
-            "url": "https://your-server.com/upload",
-            "headers": {
-              "Access-Control-Allow-Origin": "*"
-            }
+            "enable": false,
+            "url": "",
+            "headers": {}
           },
           "properties": {
             "enable": {
@@ -121,32 +134,24 @@
               "type": "object",
               "default": {},
               "description": "%customUploader.headers%",
-              "properties": {
-                "key": {
-                  "type": "string",
-                  "default": "",
-                  "description": "%customUploader.headers.key.description%"
-                },
-                "value": {
-                  "type": "string",
-                  "default": "",
-                  "description": "%customUploader.headers.value.description%"
-                }
+              "additionalProperties": {
+                "type": "string"
               }
             }
           },
           "description": "%customUploader.description%"
-        },
-        "cherryMarkdown.PicGoServer": {
-          "type": "string",
-          "description": "%picGoServer.description%",
-          "default": "http://127.0.0.1:36677/upload"
         },
         "cherryMarkdown.BackfillImageProps": {
           "type": "array",
           "items": {
             "type": "string",
             "enum": [
+              "isBorder",
+              "isNotBorder",
+              "isShadow",
+              "isRadius"
+            ],
+            "enumItemLabels": [
               "%backfillImageProps.enum.isBorder%",
               "%backfillImageProps.enum.isNotBorder%",
               "%backfillImageProps.enum.isShadow%",

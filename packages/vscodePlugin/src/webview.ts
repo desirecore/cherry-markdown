@@ -1,107 +1,42 @@
 import * as vscode from 'vscode';
-import * as path from 'path';
-import * as fs from 'fs';
 
-/**
- * 返回webview需要的html页面
- * @param mdInfo MD源码 和 一些配置信息
- * @param currentPanel WebviewPanel实例
- * @param extensionPath 静态资源路径
- * @returns string
- */
-export function getWebviewContent(mdInfo: object, currentPanel: vscode.WebviewPanel, extensionPath: string) {
-  const baseResourcePath = getWebViewPath(currentPanel);
-  const activeTextEditorPath = getActiveTextEditorPath(currentPanel);
-  const filePath = writeGlobalVarsToFile(extensionPath, {
-    baseResourcePath,
-    activeTextEditorPath,
-  });
-  const pageResourceUrlsMap = {
-    'global-vars.js': currentPanel.webview.asWebviewUri(vscode.Uri.file(filePath)),
-    'index.css': currentPanel.webview.asWebviewUri(
-      vscode.Uri.file(path.join(extensionPath, 'web-resources/index.css')),
-    ),
-    'cherry-markdown.css': currentPanel.webview.asWebviewUri(
-      vscode.Uri.file(path.join(extensionPath, 'web-resources/dist/super-doc.min.css')),
-    ),
-    'cherry-markdown.js': currentPanel.webview.asWebviewUri(
-      vscode.Uri.file(path.join(extensionPath, 'web-resources/dist/super-doc.js')),
-    ),
-    'scripts/pinyin/pinyin_dist.js': currentPanel.webview.asWebviewUri(
-      vscode.Uri.file(path.join(extensionPath, 'web-resources/scripts/pinyin/pinyin_dist.js')),
-    ),
-    'scripts/index.js': currentPanel.webview.asWebviewUri(
-      vscode.Uri.file(path.join(extensionPath, 'web-resources', 'dist', 'index.js')),
-    ),
-    'scripts/index.css': currentPanel.webview.asWebviewUri(
-      vscode.Uri.file(path.join(extensionPath, 'web-resources/scripts/index.css')),
-    ),
-    'dist/fonts/ch-icon.woff': currentPanel.webview.asWebviewUri(
-      vscode.Uri.file(path.join(extensionPath, 'web-resources/dist/fonts/ch-icon.woff')),
-    ),
-    'dist/fonts/ch-icon.woff2': currentPanel.webview.asWebviewUri(
-      vscode.Uri.file(path.join(extensionPath, 'web-resources/dist/fonts/ch-icon.woff2')),
-    ),
-    'dist/fonts/ch-icon.ttf': currentPanel.webview.asWebviewUri(
-      vscode.Uri.file(path.join(extensionPath, 'web-resources/dist/fonts/ch-icon.ttf')),
-    ),
-  };
-  return `<!DOCTYPE html>
-  <html lang="en">
-  
-  <head>
-    <meta charset="UTF-8">
-    <meta
-http-equiv="Content-Security-Policy"
-content="default-src 'none'; img-src ${currentPanel.webview.cspSource} https: http: data:; script-src ${
-    currentPanel.webview.cspSource
-  }; style-src ${currentPanel.webview.cspSource}; font-src ${currentPanel.webview.cspSource};"
-/>
-    <title>Cherry Editor - Markdown Editor</title>
-    <link rel="preload" as="font" href="${pageResourceUrlsMap['dist/fonts/ch-icon.woff']}" crossorigin="anonymous">
-    <link rel="preload" as="font" href="${pageResourceUrlsMap['dist/fonts/ch-icon.woff2']}" crossorigin="anonymous">
-    <link rel="preload" as="font" href="${pageResourceUrlsMap['dist/fonts/ch-icon.ttf']}" crossorigin="anonymous">
-    <link rel="stylesheet" type="text/css" href="${pageResourceUrlsMap['cherry-markdown.css']}">
-    <link rel="stylesheet" type="text/css" href="${pageResourceUrlsMap['index.css']}">
-    <link rel="stylesheet" type="text/css" href="${pageResourceUrlsMap['scripts/index.css']}">
-    <script src="${pageResourceUrlsMap['global-vars.js']}"></script>
-    </head>
-  
-  <body>
-    <div id="dom_mask" style="position: absolute; top: 40px; height: 20px; width: 100%;"></div>
-    <textarea id="markdown-info">${JSON.stringify(mdInfo)}</textarea>
-    <div id="markdown" class="markdown-preview-only"></div>
-    <script src="${pageResourceUrlsMap['cherry-markdown.js']}"></script>
-    <script src="${pageResourceUrlsMap['scripts/pinyin/pinyin_dist.js']}"></script>
-    <script src="${pageResourceUrlsMap['scripts/index.js']}"></script>
-  </body>
-  </html>`;
+type WebviewResource = Pick<vscode.Webview, 'asWebviewUri' | 'cspSource'>;
+
+function resourceUri(webview: WebviewResource, extensionUri: vscode.Uri, ...segments: string[]): vscode.Uri {
+  return webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, ...segments));
 }
 
-const getWebViewPath = (currentPanel: vscode.WebviewPanel): vscode.Uri => {
-  const workspaceFolder = vscode.workspace.workspaceFolders![0].uri.fsPath ?? '';
-  const workspacePath = vscode.Uri.file(workspaceFolder);
-  return currentPanel.webview.asWebviewUri(workspacePath);
-};
-
-const getActiveTextEditorPath = (currentPanel: vscode.WebviewPanel): vscode.Uri => {
-  const editor = vscode.window.activeTextEditor;
-  const activeTextEditorPath = editor
-    ? currentPanel.webview.asWebviewUri(editor.document.uri)
-    : getWebViewPath(currentPanel);
-  return activeTextEditorPath;
-};
-
-function writeGlobalVarsToFile(
-  extensionPath: string,
-  globalVars: { baseResourcePath: vscode.Uri; activeTextEditorPath: vscode.Uri },
-): string {
-  const globalVarsContent = `
-    window._baseResourcePath = "${globalVars.baseResourcePath}";
-    window._activeTextEditorPath = "${globalVars.activeTextEditorPath}";
-  `;
-
-  const filePath = path.join(extensionPath, 'web-resources/scripts', 'global-vars.js');
-  fs.writeFileSync(filePath, globalVarsContent);
-  return filePath;
+/** The shell intentionally has no document content: it arrives only after the ready handshake. */
+export function getWebviewContent(currentPanel: { webview: WebviewResource }, extensionUri: vscode.Uri): string {
+  const { webview } = currentPanel;
+  const resources = {
+    baseCss: resourceUri(webview, extensionUri, 'web-resources', 'index.css'),
+    cherryCss: resourceUri(webview, extensionUri, 'web-resources', 'dist', 'super-doc.min.css'),
+    customCss: resourceUri(webview, extensionUri, 'web-resources', 'scripts', 'index.css'),
+    cherry: resourceUri(webview, extensionUri, 'web-resources', 'dist', 'super-doc.js'),
+    pinyin: resourceUri(webview, extensionUri, 'web-resources', 'scripts', 'pinyin', 'pinyin_dist.js'),
+    webview: resourceUri(webview, extensionUri, 'web-resources', 'dist', 'index.js'),
+    font: resourceUri(webview, extensionUri, 'web-resources', 'dist', 'fonts', 'ch-icon.woff2'),
+  };
+  return `<!DOCTYPE html>
+<html lang="${vscode.env.language}">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; form-action 'none'; frame-src 'none'; img-src ${webview.cspSource} https: http: data:; script-src ${webview.cspSource}; style-src ${webview.cspSource} 'unsafe-inline'; font-src ${webview.cspSource};">
+  <title>Cherry Markdown</title>
+  <link rel="preload" as="font" href="${resources.font}" crossorigin="anonymous">
+  <link rel="stylesheet" type="text/css" href="${resources.cherryCss}">
+  <link rel="stylesheet" type="text/css" href="${resources.baseCss}">
+  <link rel="stylesheet" type="text/css" href="${resources.customCss}">
+</head>
+<body>
+  <div id="dom_mask"></div>
+  <div id="markdown" class="markdown-preview-only"></div>
+  <div id="webview-status" role="status" aria-live="polite" aria-atomic="true"></div>
+  <script src="${resources.cherry}"></script>
+  <script src="${resources.pinyin}"></script>
+  <script src="${resources.webview}"></script>
+</body>
+</html>`;
 }
