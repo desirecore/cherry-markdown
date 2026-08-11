@@ -19,25 +19,30 @@ const __dirname = dirname(__filename);
 const PROJECT_ROOT_PATH = _resolve(__dirname, '../');
 const IS_PRODUCTION = process.env.NODE_ENV === 'production';
 
-glob(
-  'src/addons/**/*-plugin.js',
-  {
-    cwd: PROJECT_ROOT_PATH,
-  },
-  (error, matches) => {
-    if (error) {
-      throw error;
-    }
-    buildAddons(matches);
-  },
-);
+const entries = await new Promise((resolve, reject) => {
+  glob(
+    'src/addons/**/*-plugin.js',
+    {
+      cwd: PROJECT_ROOT_PATH,
+    },
+    (error, matches) => {
+      if (error) {
+        reject(error);
+        return;
+      }
+      resolve(matches);
+    },
+  );
+});
+
+await buildAddons(entries);
 
 /**
  *
  * @param {string[]} entries
  */
-function buildAddons(entries) {
-  entries.forEach(async (entry) => {
+async function buildAddons(entries) {
+  for (const entry of entries) {
     const fullEntryPath = _resolve(PROJECT_ROOT_PATH, entry);
 
     const outputFileName = fullEntryPath.replace(_resolve(PROJECT_ROOT_PATH, 'src/addons/'), '');
@@ -142,5 +147,5 @@ function buildAddons(entries) {
       });
       writeFileSync(targetPath, output.code || output.source || '', { encoding: 'utf-8' });
     });
-  });
+  }
 }
