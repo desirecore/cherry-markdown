@@ -31,7 +31,7 @@ cd "$PKG_DIR"
 npx rimraf ./dist
 
 echo "==> Building release artifacts..."
-npx run-p iconfont build:styles build:types build:addons build:full build:core build:engine build:engine-full build:stream build:wysiwyg
+npx run-s iconfont build:styles build:types build:addons build:full build:core build:engine build:engine-full build:stream build:wysiwyg verify:dist
 
 echo "==> Verifying declared type entrypoint..."
 test -f dist/types/index.d.ts
