@@ -437,6 +437,10 @@ export default class CodeBlock extends ParagraphBase {
 
   beforeMakeHtml(str, sentenceMakeFunc, markdownParams) {
     let $str = str;
+    // Keep the historical key for a unique block. Only equal blocks within one
+    // render need a suffix, otherwise an async custom renderer cannot identify
+    // its own placeholder.
+    const signOccurrences = new Map();
 
     // 处理段落代码块自动闭合
     if (this.selfClosing || this.$cherry.options.engine.global.flowSessionContext) {
@@ -457,7 +461,10 @@ export default class CodeBlock extends ParagraphBase {
         return result;
       }
       let $code = code;
-      const { sign, lines } = this.computeLines(match, leadingContent, code);
+      const { sign: baseSign, lines } = this.computeLines(match, leadingContent, code);
+      const occurrence = signOccurrences.get(baseSign) || 0;
+      signOccurrences.set(baseSign, occurrence + 1);
+      const sign = occurrence === 0 ? baseSign : `${baseSign}_${occurrence}`;
       // 从缓存中获取html
       let cacheCode = this.$codeCache(sign);
       if (cacheCode && cacheCode !== '') {

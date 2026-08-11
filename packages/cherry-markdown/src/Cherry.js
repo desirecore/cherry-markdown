@@ -293,6 +293,7 @@ export default class Cherry extends CherryStatic {
   destroy() {
     // 让仍在等待的 WYSIWYG 切换失效，避免销毁后由迟到 Promise 回写 DOM/状态。
     this.modelSwitchSequence += 1;
+    this.engine?.destroy();
     if (this.wysiwygEditor) {
       this.wysiwygEditor.destroy();
       this.wysiwygEditor = null;

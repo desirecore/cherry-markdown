@@ -8,6 +8,8 @@ export default class AsyncRenderHandler {
   originMd = '';
   // 当前渲染结果，会随着异步渲染进行而更新
   md = '';
+  renderVersion = 0;
+  syncRenderCompleted = false;
 
   /**
    * @param {import('../Cherry').default} cherry Cherry实例
@@ -18,10 +20,12 @@ export default class AsyncRenderHandler {
 
   handleSyncRenderStart(md = '') {
     this.originMd = md;
+    this.syncRenderCompleted = false;
   }
 
   handleSyncRenderCompleted(md = '') {
     this.md = md;
+    this.syncRenderCompleted = true;
     // 如果没有异步渲染块，也要发起渲染完成事件。
     const immediate = this.pendingRenderers.size === 0;
     if (immediate) {
@@ -39,16 +43,18 @@ export default class AsyncRenderHandler {
     }
     this.pendingRenderers.delete(sign);
     this.md = replacer(this.md);
-    if (this.pendingRenderers.size === 0) {
+    if (this.syncRenderCompleted && this.pendingRenderers.size === 0) {
       // 所有异步渲染块都渲染完成，发起渲染完成事件
       this.handleAllCompleted();
     }
   }
 
   clear() {
+    this.renderVersion += 1;
     this.pendingRenderers.clear();
     this.originMd = '';
     this.md = '';
+    this.syncRenderCompleted = false;
   }
 
   handleAllCompleted() {

@@ -219,7 +219,7 @@ const htmlContent = cherryEngineInstance.makeHtml('# welcome to SuperDoc!');
 ```javascript
 import '@desirecore/super-doc/dist/super-doc.css';
 import Cherry from '@desirecore/super-doc/dist/super-doc.core';
-import CherryMermaidPlugin from '@desirecore/super-doc/dist/addons/cherry-code-block-mermaid-plugin';
+import CherryMermaidPlugin from '@desirecore/super-doc/dist/addons/cherry-code-block-mermaid-plugin.esm.js';
 import mermaid from 'mermaid';
 
 // 插件注册必须在 Cherry 实例化之前完成
@@ -267,8 +267,8 @@ import '@desirecore/super-doc/dist/super-doc.css';
 import Cherry from '@desirecore/super-doc/dist/super-doc.core';
 
 const registerPlugin = async () => {
-  const [{ default: CherryMermaidPlugin }, mermaid] = await Promise.all([
-    import('@desirecore/super-doc/src/addons/cherry-code-block-mermaid-plugin'),
+  const [{ default: CherryMermaidPlugin }, { default: mermaid }] = await Promise.all([
+    import('@desirecore/super-doc/dist/addons/cherry-code-block-mermaid-plugin.esm.js'),
     import('mermaid'),
   ]);
   Cherry.usePlugin(CherryMermaidPlugin, {
@@ -283,6 +283,9 @@ registerPlugin().then(() => {
   });
 });
 ```
+
+请在创建第一个 `Cherry` 实例前注册插件。对于严格 CSP/Electron 应用，推荐直接传入 Mermaid
+模块，不要依赖远程脚本注入。可选 `src` 仅用于应用自身受信任的 classic/UMD 脚本；加载失败时会回退到源码块。
 
 ## 配置
 

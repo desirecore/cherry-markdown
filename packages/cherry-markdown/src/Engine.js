@@ -51,6 +51,7 @@ export default class Engine {
     this.hookCenter = new HookCenter(hooksConfig, markdownParams, cherry);
     this.hooks = this.hookCenter.getHookList();
     this.asyncRenderHandler = new AsyncRenderHandler(cherry);
+    this.destroyCallbacks = new Set();
     // 使用LRU缓存替代普通对象
     this.hashCache = new LRUCache(20000); // 缓存最多20000个渲染结果
     this.hashStrMap = new LRUCache(2000); // 缓存最多2000个哈希值
@@ -209,6 +210,28 @@ export default class Engine {
 
   $completeMakeHtml(md) {
     this.asyncRenderHandler.handleSyncRenderCompleted(md);
+  }
+
+  /**
+   * Register cleanup owned by an engine render. This is intentionally tiny so
+   * add-ons can release temporary DOM without depending on the Cherry UI.
+   * @param {() => void} callback
+   */
+  onDestroy(callback) {
+    this.destroyCallbacks.add(callback);
+    return () => this.destroyCallbacks.delete(callback);
+  }
+
+  destroy() {
+    this.asyncRenderHandler.clear();
+    this.destroyCallbacks.forEach((callback) => {
+      try {
+        callback();
+      } catch (error) {
+        Logger.warn('Engine destroy cleanup failed.', error);
+      }
+    });
+    this.destroyCallbacks.clear();
   }
 
   $beforeMakeHtml(str) {
