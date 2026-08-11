@@ -23,6 +23,7 @@ import defaultConfig from './Cherry.config';
 import { customizer } from './utils/config';
 import cloneDeep from 'lodash/cloneDeep';
 import { urlProcessorProxy } from './UrlCache';
+export { enqueueMermaidRender } from './utils/mermaid-render-queue';
 
 class CherryEngine extends CherryStatic {
   /**

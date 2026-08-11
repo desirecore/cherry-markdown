@@ -4,6 +4,7 @@ import { setDrawioConfig } from './wysiwyg/nodes/drawio';
 import { setTocLocale } from './wysiwyg/nodes/toc';
 import { setDetailLocale } from './wysiwyg/nodes/detail';
 import { setCherryImageLocale } from './wysiwyg/nodes/cherryImage';
+import { enqueueMermaidRender, nextMermaidRenderId } from './utils/mermaid-render-queue';
 
 /**
  * WysiwygEditor - Milkdown Crepe 编辑器的包装类
@@ -32,6 +33,7 @@ export default class WysiwygEditor {
     this._urlReverseMap = new Map();
     /** @type {Map<string, string>} link URL → Cherry link attributes (e.g. {target=_blank}) */
     this._linkAttrMap = new Map();
+    this._mermaidRenderGeneration = 0;
   }
 
   /**
@@ -42,7 +44,6 @@ export default class WysiwygEditor {
     if (this.initialized) {
       return false;
     }
-
     this._destroyed = false;
     this._initGeneration += 1;
     const initGeneration = this._initGeneration;
@@ -868,8 +869,6 @@ export default class WysiwygEditor {
     // Mermaid 渲染需要一个隐藏的 canvas 容器
     this._mermaidCanvas = null;
 
-    // 渲染队列：mermaid v9 同步渲染不能并发，需要串行处理
-    let renderQueue = Promise.resolve();
     let counter = 0;
 
     crepeOptions.featureConfigs['code-mirror'] = {
@@ -878,12 +877,19 @@ export default class WysiwygEditor {
       previewOnlyByDefault: true,
       renderPreview: (language, content, applyPreview) => {
         if (language.toLowerCase() === 'mermaid' && content.length > 0) {
-          // 通过队列串行渲染，避免 mermaid 并发渲染冲突
-          renderQueue = renderQueue.then(() =>
-            this._renderMermaid(mermaidAPI, isAsync, content, ++counter)
-              .then((svg) => applyPreview(svg))
-              .catch(() => applyPreview(null)),
-          );
+          const generation = this._mermaidRenderGeneration;
+          // Mermaid config and its temporary SVG DOM are shared by the preview,
+          // WYSIWYG, and separately-loaded add-on bundles. Serialise by the
+          // injected Mermaid object rather than by this editor instance.
+          enqueueMermaidRender(mermaidAPI, async () => {
+            if (this._destroyed || generation !== this._mermaidRenderGeneration) return;
+            try {
+              const svg = await this._renderMermaid(mermaidAPI, isAsync, content, ++counter);
+              if (!this._destroyed && generation === this._mermaidRenderGeneration) applyPreview(svg);
+            } catch (_) {
+              if (!this._destroyed && generation === this._mermaidRenderGeneration) applyPreview(null);
+            }
+          });
           return undefined; // async — Crepe 会显示 "Loading..."
         }
         if (existingRenderPreview) {
@@ -922,7 +928,7 @@ export default class WysiwygEditor {
       mermaidAPI.initialize(this._mermaidThemeConfig);
     }
     const canvas = this._ensureMermaidCanvas();
-    const graphId = `mermaid-wysiwyg-${id}-${Date.now()}`;
+    const graphId = `mermaid-wysiwyg-${id}-${nextMermaidRenderId('graph')}`;
 
     let svg;
     if (isAsync) {
@@ -989,6 +995,9 @@ export default class WysiwygEditor {
   destroy() {
     this._destroyed = true;
     this._initGeneration += 1;
+    this._mermaidRenderGeneration += 1;
+    this._mermaidCanvas?.remove();
+    this._mermaidCanvas = null;
     this.initialized = false;
     this._removeEventListeners();
     const crepe = this.crepe;

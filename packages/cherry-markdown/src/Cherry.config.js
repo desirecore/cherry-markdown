@@ -303,6 +303,10 @@ const defaultConfig = {
         },
         mermaid: {
           svg2img: false, // 是否将mermaid生成的画图变成img格式
+          // Optional host-controlled classic/UMD script used only when no
+          // Mermaid object was injected. Applications with strict CSP should
+          // inject the Mermaid module instead.
+          src: '',
         },
         /**
          * indentedCodeBlock是缩进代码块是否启用的开关

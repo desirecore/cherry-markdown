@@ -215,7 +215,7 @@ The core build package does not contain mermaid dependency, should import relate
 ```javascript
 import '@desirecore/super-doc/dist/super-doc.css';
 import Cherry from '@desirecore/super-doc/dist/super-doc.core';
-import CherryMermaidPlugin from '@desirecore/super-doc/dist/addons/cherry-code-block-mermaid-plugin';
+import CherryMermaidPlugin from '@desirecore/super-doc/dist/addons/cherry-code-block-mermaid-plugin.esm.js';
 import mermaid from 'mermaid';
 
 // Plug-in registration must be done before Cherry is instantiated
@@ -263,8 +263,8 @@ import '@desirecore/super-doc/dist/super-doc.css';
 import Cherry from '@desirecore/super-doc/dist/super-doc.core';
 
 const registerPlugin = async () => {
-  const [{ default: CherryMermaidPlugin }, mermaid] = await Promise.all([
-    import('@desirecore/super-doc/src/addons/cherry-code-block-mermaid-plugin'),
+  const [{ default: CherryMermaidPlugin }, { default: mermaid }] = await Promise.all([
+    import('@desirecore/super-doc/dist/addons/cherry-code-block-mermaid-plugin.esm.js'),
     import('mermaid'),
   ]);
   Cherry.usePlugin(CherryMermaidPlugin, {
@@ -279,6 +279,12 @@ registerPlugin().then(() => {
   });
 });
 ```
+
+Register the plug-in before creating the first `Cherry` instance. Passing the
+Mermaid module is preferred for strict CSP/Electron applications; do not depend
+on a remotely injected script. The optional `src` option is only for a trusted,
+application-controlled classic/UMD script and falls back to the source block if
+it cannot load.
 
 ## Configuration
 

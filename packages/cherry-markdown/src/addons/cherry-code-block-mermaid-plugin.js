@@ -15,6 +15,7 @@
  */
 import mergeWith from 'lodash/mergeWith';
 import { isBrowser } from '@/utils/env';
+import { enqueueMermaidRender, getMermaidRenderRegistry, nextMermaidRenderId } from '@/utils/mermaid-render-queue';
 
 const CHART_TYPES = [
   'flowchart',
@@ -41,263 +42,381 @@ const CHART_TYPES = [
 ];
 
 const DEFAULT_OPTIONS = {
-  // TODO: themes
   theme: 'default',
   altFontFamily: 'sans-serif',
   fontFamily: 'sans-serif',
   themeCSS: '.label foreignObject { font-size: 90%; overflow: visible; } .label { font-family: sans-serif; }',
   startOnLoad: false,
   logLevel: 5,
-  // fontFamily: 'Arial, monospace'
+  // An application-owned classic/UMD source. The Markdown input never controls it.
+  src: '',
 };
 
 CHART_TYPES.forEach((type) => {
-  DEFAULT_OPTIONS[type] = {
-    useMaxWidth: false,
-  };
+  DEFAULT_OPTIONS[type] = { useMaxWidth: false };
 });
+
+const MERMAID_SCRIPT_TIMEOUT = 15000;
+
+function browserMermaid() {
+  if (!isBrowser()) return { mermaid: null, mermaidAPI: null };
+  return { mermaid: window.mermaid || null, mermaidAPI: window.mermaidAPI || null };
+}
+
+function normalizeMermaidScriptSrc(src) {
+  if (!src || !isBrowser()) return false;
+  try {
+    const url = new URL(src, document.baseURI);
+    return url.protocol === 'http:' || url.protocol === 'https:' ? url.href : false;
+  } catch (_) {
+    return false;
+  }
+}
+
+function removeManagedMermaidScript(src) {
+  if (!isBrowser()) return;
+  Array.from(document.scripts)
+    .filter((script) => script.dataset.cherryMermaidSrc === src)
+    .forEach((script) => script.remove());
+}
+
+function hasManagedMermaidScript(src) {
+  return isBrowser() && Array.from(document.scripts).some((script) => script.dataset.cherryMermaidSrc === src);
+}
+
+function clearStaleMermaidScriptRegistry(registry) {
+  if (!registry.activeScriptSrc) return;
+  const available = browserMermaid();
+  if (!hasManagedMermaidScript(registry.activeScriptSrc) && !available.mermaid && !available.mermaidAPI) {
+    registry.scriptLoads.delete(registry.activeScriptSrc);
+    registry.activeScriptSrc = null;
+  }
+}
+
+/**
+ * A document-level loader shared through the Symbol.for registry. A failed load
+ * is removed from the registry and DOM so a later call can retry safely.
+ */
+function loadMermaidScript(requestedSrc) {
+  const src = normalizeMermaidScriptSrc(requestedSrc);
+  if (!src) return Promise.reject(new Error('Invalid Mermaid script source.'));
+  const registry = getMermaidRenderRegistry();
+  clearStaleMermaidScriptRegistry(registry);
+  if (registry.activeScriptSrc && registry.activeScriptSrc !== src) {
+    return Promise.reject(new Error('A different Mermaid script is already loading.'));
+  }
+  if (registry.scriptLoads.has(src)) return registry.scriptLoads.get(src);
+
+  registry.activeScriptSrc = src;
+  const script = document.createElement('script');
+  script.async = true;
+  script.src = src;
+  script.dataset.cherryMermaidSrc = src;
+
+  const load = new Promise((resolve, reject) => {
+    const cleanup = () => {
+      clearTimeout(timer);
+      script.onload = null;
+      script.onerror = null;
+    };
+    const fail = (error) => {
+      cleanup();
+      script.remove();
+      registry.scriptLoads.delete(src);
+      if (registry.activeScriptSrc === src) registry.activeScriptSrc = null;
+      reject(error);
+    };
+    const timer = setTimeout(() => fail(new Error('Timed out loading Mermaid.')), MERMAID_SCRIPT_TIMEOUT);
+    script.onload = () => {
+      cleanup();
+      resolve();
+    };
+    script.onerror = () => fail(new Error('Unable to load Mermaid.'));
+    document.head.appendChild(script);
+  });
+  registry.scriptLoads.set(src, load);
+  return load;
+}
+
+function resetMermaidScript(src) {
+  const registry = getMermaidRenderRegistry();
+  registry.scriptLoads.delete(src);
+  if (registry.activeScriptSrc === src) registry.activeScriptSrc = null;
+  removeManagedMermaidScript(src);
+}
+
 export default class MermaidCodeEngine {
   static TYPE = 'figure';
 
   static install(cherryOptions, ...args) {
     mergeWith(cherryOptions, {
-      engine: {
-        syntax: {
-          codeBlock: {
-            customRenderer: {
-              mermaid: new MermaidCodeEngine(...args),
-            },
-          },
-        },
-      },
+      engine: { syntax: { codeBlock: { customRenderer: { mermaid: new MermaidCodeEngine(...args) } } } },
     });
   }
 
   mermaidAPIRefs = null;
   options = DEFAULT_OPTIONS;
-  dom = null;
-  mermaidCanvas = null;
-  // 上次渲染的代码
-  lastRenderedCode = '';
-  needReturnLastRenderedCode = false;
+  hasExplicitMermaid = false;
+  mermaidCanvases = new WeakMap();
+  asyncMermaidCanvases = new WeakMap();
+  cleanupRegistered = new WeakSet();
+  mermaidLoadPromises = new Map();
 
   /**
-   * @param {Object} mermaidOptions - Mermaid 配置选项
-   * @param {Object} [mermaidOptions.mermaid] - mermaid 实例对象，如果未提供会尝试从 window.mermaid 获取
-   * @param {Object} [mermaidOptions.mermaidAPI] - mermaidAPI 实例对象，如果未提供会尝试从 window.mermaidAPI 获取
-   * @param {string} [mermaidOptions.theme='default'] - 主题，可选值: 'default', 'dark', 'forest', 'neutral' 等
-   * @param {string} [mermaidOptions.altFontFamily='sans-serif'] - 备用字体
-   * @param {string} [mermaidOptions.fontFamily='sans-serif'] - 主字体
-   * @param {string} [mermaidOptions.themeCSS] - 自定义主题 CSS 样式
-   * @param {boolean} [mermaidOptions.startOnLoad=false] - 是否在页面加载时自动渲染
-   * @param {number} [mermaidOptions.logLevel=5] - 日志级别，1-5，5 为最详细
-   * @param {HTMLElement} [mermaidOptions.mermaidCanvasAppendDom] - Mermaid 临时画布容器的挂载节点
-   * @param {Object} [mermaidOptions.flowchart] - 流程图配置，可设置 { useMaxWidth: false } 等
-   * @param {Object} [mermaidOptions.sequence] - 序列图配置，可设置 { useMaxWidth: false } 等
-   * @param {Object} [mermaidOptions.gantt] - 甘特图配置，可设置 { useMaxWidth: false } 等
-   * @param {Object} [mermaidOptions.journey] - 用户旅程图配置，可设置 { useMaxWidth: false } 等
-   * @param {Object} [mermaidOptions.timeline] - 时间线图配置，可设置 { useMaxWidth: false } 等
-   * @param {Object} [mermaidOptions.class] - 类图配置，可设置 { useMaxWidth: false } 等
-   * @param {Object} [mermaidOptions.state] - 状态图配置，可设置 { useMaxWidth: false } 等
-   * @param {Object} [mermaidOptions.er] - ER 图配置，可设置 { useMaxWidth: false } 等
-   * @param {Object} [mermaidOptions.pie] - 饼图配置，可设置 { useMaxWidth: false } 等
-   * @param {Object} [mermaidOptions.quadrantChart] - 象限图配置，可设置 { useMaxWidth: false } 等
-   * @param {Object} [mermaidOptions.xyChart] - XY 图配置，可设置 { useMaxWidth: false } 等
-   * @param {Object} [mermaidOptions.requirement] - 需求图配置，可设置 { useMaxWidth: false } 等
-   * @param {Object} [mermaidOptions.architecture] - 架构图配置，可设置 { useMaxWidth: false } 等
-   * @param {Object} [mermaidOptions.mindmap] - 思维导图配置，可设置 { useMaxWidth: false } 等
-   * @param {Object} [mermaidOptions.kanban] - 看板图配置，可设置 { useMaxWidth: false } 等
-   * @param {Object} [mermaidOptions.gitGraph] - Git 图配置，可设置 { useMaxWidth: false } 等
-   * @param {Object} [mermaidOptions.c4] - C4 图配置，可设置 { useMaxWidth: false } 等
-   * @param {Object} [mermaidOptions.sankey] - 桑基图配置，可设置 { useMaxWidth: false } 等
-   * @param {Object} [mermaidOptions.packet] - 数据包图配置，可设置 { useMaxWidth: false } 等
-   * @param {Object} [mermaidOptions.block] - 块图配置，可设置 { useMaxWidth: false } 等
-   * @param {Object} [mermaidOptions.radar] - 雷达图配置，可设置 { useMaxWidth: false } 等
+   * @param {Object} mermaidOptions
+   * @param {Object} [mermaidOptions.mermaid]
+   * @param {Object} [mermaidOptions.mermaidAPI]
+   * @param {string} [mermaidOptions.src] Trusted host-controlled classic/UMD script URL.
    */
   constructor(mermaidOptions = {}) {
     const { mermaid, mermaidAPI } = mermaidOptions;
-    if (
-      !mermaidAPI &&
-      !window.mermaidAPI &&
-      (!mermaid || !mermaid.mermaidAPI) &&
-      (!window.mermaid || !window.mermaid.mermaidAPI)
-    ) {
-      throw new Error('code-block-mermaid-plugin[init]: Package mermaid or mermaidAPI not found.');
-    }
     this.options = { ...DEFAULT_OPTIONS, ...(mermaidOptions || {}) };
-    this.mermaidAPIRefs = mermaidAPI || window.mermaidAPI || mermaid.mermaidAPI || window.mermaid.mermaidAPI;
-    if (this.isAsyncRenderVersion()) {
-      // 异步渲染时，只有 mermaid.render 有队列优化，使用 mermaidAPI 会导致渲染出错
-      this.mermaidAPIRefs = mermaid || window.mermaid || this.mermaidAPIRefs;
-    }
+    this.hasExplicitMermaid = Boolean(mermaid || mermaidAPI);
     delete this.options.mermaid;
     delete this.options.mermaidAPI;
-    this.mermaidAPIRefs.initialize(this.options);
+    if (this.hasExplicitMermaid) {
+      this.resolveMermaidAPIRefs(mermaid, mermaidAPI);
+    } else {
+      const available = browserMermaid();
+      this.resolveMermaidAPIRefs(available.mermaid, available.mermaidAPI);
+    }
   }
 
-  // v10 以上开始，render 变为异步渲染，render 函数的参数数量从 4 变为 3
+  resolveMermaidAPIRefs(mermaid, mermaidAPI) {
+    const modern = mermaid && typeof mermaid.render === 'function' ? mermaid : null;
+    const legacy = mermaidAPI || mermaid?.mermaidAPI;
+    const candidate = modern || legacy;
+    if (!candidate || typeof candidate.render !== 'function') return false;
+    // v10+ must use the module-level render API; old APIs use the callback facade.
+    this.mermaidAPIRefs = modern && modern.render.length <= 3 ? modern : legacy || modern;
+    return typeof this.mermaidAPIRefs.render === 'function';
+  }
+
+  tryResolveBrowserMermaid() {
+    if (this.hasExplicitMermaid || this.mermaidAPIRefs) return Boolean(this.mermaidAPIRefs);
+    const available = browserMermaid();
+    return this.resolveMermaidAPIRefs(available.mermaid, available.mermaidAPI);
+  }
+
   isAsyncRenderVersion() {
-    return this.mermaidAPIRefs.render.length === 3;
+    return Boolean(this.mermaidAPIRefs && this.mermaidAPIRefs.render.length <= 3);
+  }
+
+  initializeMermaid() {
+    try {
+      this.mermaidAPIRefs?.initialize?.(this.options);
+    } catch (_) {
+      // Mermaid can report an already-initialised parser. Rendering remains safe.
+    }
+  }
+
+  registerEngineCleanup($engine) {
+    if (this.cleanupRegistered.has($engine)) return;
+    this.cleanupRegistered.add($engine);
+    $engine.onDestroy?.(() => {
+      this.mermaidCanvases.get($engine)?.remove();
+      this.mermaidCanvases.delete($engine);
+      this.asyncMermaidCanvases.get($engine)?.forEach((canvas) => canvas.remove());
+      this.asyncMermaidCanvases.delete($engine);
+      this.cleanupRegistered.delete($engine);
+    });
   }
 
   mountMermaidCanvas($engine) {
-    if (this.mermaidCanvas && document.body.contains(this.mermaidCanvas)) {
-      return;
-    }
-    this.mermaidCanvas = document.createElement('div');
-    this.mermaidCanvas.style = 'width:1024px;opacity:0;position:fixed;top:100%;';
+    this.registerEngineCleanup($engine);
+    const oldCanvas = this.mermaidCanvases.get($engine);
+    if (oldCanvas && document.body.contains(oldCanvas)) return oldCanvas;
+    const canvas = document.createElement('div');
+    canvas.style.cssText = 'width:1024px;opacity:0;position:fixed;top:100%;';
     const container = this.options.mermaidCanvasAppendDom || $engine.$cherry.wrapperDom || document.body;
-    container.appendChild(this.mermaidCanvas);
+    container.appendChild(canvas);
+    this.mermaidCanvases.set($engine, canvas);
+    return canvas;
   }
 
-  /**
-   * 转换svg为img，如果出错则直出svg
-   * @param {string} svgCode
-   * @param {string} graphId
-   * @returns {string}
-   */
-  convertMermaidSvgToImg(svgCode, graphId) {
-    const domParser = new DOMParser();
-    let svgHtml;
+  createAsyncRenderCanvas($engine) {
+    this.registerEngineCleanup($engine);
+    const canvas = document.createElement('div');
+    canvas.style.cssText = 'width:1024px;opacity:0;position:fixed;top:100%;';
+    const container = this.options.mermaidCanvasAppendDom || $engine.$cherry.wrapperDom || document.body;
+    container.appendChild(canvas);
+    const canvases = this.asyncMermaidCanvases.get($engine) || new Set();
+    canvases.add(canvas);
+    this.asyncMermaidCanvases.set($engine, canvases);
+    return canvas;
+  }
+
+  removeAsyncRenderCanvas($engine, canvas) {
+    canvas.remove();
+    const canvases = this.asyncMermaidCanvases.get($engine);
+    canvases?.delete(canvas);
+  }
+
+  convertMermaidSvgToImg(svgCode, graphId, svg2img) {
     const injectSvgFallback = (svg) =>
       svg.replace('<svg ', '<svg style="max-width:100%;height:auto;font-family:sans-serif;" ');
     try {
-      const svgDoc = /** @type {XMLDocument} */ (domParser.parseFromString(svgCode, 'image/svg+xml'));
+      const svgDoc = /** @type {XMLDocument} */ (new DOMParser().parseFromString(svgCode, 'image/svg+xml'));
       const svgDom = /** @type {SVGSVGElement} */ (/** @type {any} */ (svgDoc.documentElement));
-      // tagName不是svg时，说明存在parse error
-      if (svgDom.tagName.toLowerCase() === 'svg') {
-        svgDom.style.maxWidth = '100%';
-        svgDom.style.height = 'auto';
-        svgDom.style.fontFamily = 'sans-serif';
-        const shadowSvg = /** @type {SVGSVGElement} */ (/** @type {any} */ (document.getElementById(graphId)));
-        let svgBox = shadowSvg.getBBox();
-        if (!svgDom.hasAttribute('viewBox')) {
-          svgDom.setAttribute('viewBox', `0 0 ${svgBox.width} ${svgBox.height}`);
-        } else {
-          svgBox = svgDom.viewBox.baseVal;
-        }
-        svgDom.getAttribute('width') === '100%' && svgDom.setAttribute('width', `${svgBox.width}`);
-        svgDom.getAttribute('height') === '100%' && svgDom.setAttribute('height', `${svgBox.height}`);
-        // fix end
-        svgHtml = svgDoc.documentElement.outerHTML;
-        // 屏蔽转img标签功能，如需要转换为img解除屏蔽即可
-        if (this.svg2img) {
-          const dataUrl = `data:image/svg+xml,${encodeURIComponent(svgDoc.documentElement.outerHTML)}`;
-          svgHtml = `<img class="svg-img" style="max-width:100%;height:auto;" src="${dataUrl}" alt="${graphId}" />`;
-        }
-      } else {
-        svgHtml = injectSvgFallback(svgCode);
-      }
-    } catch (e) {
-      svgHtml = injectSvgFallback(svgCode);
+      if (svgDom.tagName.toLowerCase() !== 'svg') return injectSvgFallback(svgCode);
+      svgDom.style.maxWidth = '100%';
+      svgDom.style.height = 'auto';
+      svgDom.style.fontFamily = 'sans-serif';
+      const shadowSvg = /** @type {SVGSVGElement} */ (/** @type {any} */ (document.getElementById(graphId)));
+      let svgBox = shadowSvg?.getBBox?.();
+      if (!svgDom.hasAttribute('viewBox') && svgBox)
+        svgDom.setAttribute('viewBox', `0 0 ${svgBox.width} ${svgBox.height}`);
+      if (svgDom.hasAttribute('viewBox')) svgBox = svgDom.viewBox.baseVal;
+      if (svgBox && svgDom.getAttribute('width') === '100%') svgDom.setAttribute('width', `${svgBox.width}`);
+      if (svgBox && svgDom.getAttribute('height') === '100%') svgDom.setAttribute('height', `${svgBox.height}`);
+      const html = svgDoc.documentElement.outerHTML;
+      return svg2img
+        ? `<img class="svg-img" style="max-width:100%;height:auto;" src="data:image/svg+xml,${encodeURIComponent(html)}" alt="${graphId}" />`
+        : html;
+    } catch (_) {
+      return injectSvgFallback(svgCode);
     }
-    return svgHtml;
   }
 
-  processSvgCode(svgCode, graphId) {
-    const fixedSvg = svgCode
-      .replace(/\s*markerUnits="0"/g, '')
-      .replace(/\s*x="NaN"/g, '')
-      .replace(/<br>/g, '<br/>');
-    const html = this.convertMermaidSvgToImg(fixedSvg, graphId);
-    return html;
+  processSvgCode(svgCode, graphId, svg2img) {
+    return this.convertMermaidSvgToImg(
+      svgCode
+        .replace(/\s*markerUnits="0"/g, '')
+        .replace(/\s*x="NaN"/g, '')
+        .replace(/<br>/g, '<br/>'),
+      graphId,
+      svg2img,
+    );
   }
 
-  syncRender(graphId, src, sign, $engine) {
-    let html;
-    try {
-      this.mermaidAPIRefs.render(
-        graphId,
-        src,
-        (svgCode) => {
-          html = this.processSvgCode(svgCode, graphId);
-        },
-        this.mermaidCanvas,
-      );
-      this.lastRenderedCode = html;
-    } catch (e) {
-      /**
-       * 如果开启了流式渲染，当前有上次渲染结果时，使用上次渲染结果
-       * 这里有赌的成分
-       *  流式输出场景，只有最后一个mermaid代码块在流式输出，随着最后一个mermaid流式输出，mermaid的渲染有概率会失败
-       *  这里赌的是只有一个mermaid代码块需要渲染
-       */
-      if ($engine.$cherry.options.engine.global.flowSessionContext && this.lastRenderedCode) {
-        return this.lastRenderedCode;
-      }
-      return e?.str;
-    }
-    return html;
+  isCurrentRender($engine, version) {
+    return $engine.asyncRenderHandler.renderVersion === version;
   }
 
-  handleAsyncRenderDone(graphId, sign, $engine, props, html) {
+  handleAsyncRenderDone(graphId, sign, $engine, props, html, version) {
+    if (!this.isCurrentRender($engine, version)) return;
     props.updateCache(html);
-    const container = $engine.$cherry.wrapperDom || document.body;
     if (isBrowser()) {
-      const placeholderList = container.querySelectorAll(`[data-sign="${sign}"][data-type="codeBlock"]`);
-      placeholderList?.forEach((placeholder) => {
+      const container = $engine.$cherry.wrapperDom || document.body;
+      container.querySelectorAll(`[data-sign="${sign}"][data-type="codeBlock"]`).forEach((placeholder) => {
         placeholder.parentElement.innerHTML = html;
       });
     }
     $engine.asyncRenderHandler.done(graphId, {
       replacer: (md) => {
-        const regex = new RegExp(`<div data-sign="${sign}" data-type="codeBlock"[^>]*>.*?<\\/div>`, 'g');
-        return md.replace(regex, html);
+        const regex = new RegExp(
+          `(<figure\\s+data-sign="${sign}"\\s+data-type="mermaid"[^>]*>)[\\s\\S]*?(<\\/figure>)`,
+          'g',
+        );
+        return md.replace(regex, (_, opening, closing) => `${opening}${html}${closing}`);
       },
     });
   }
 
-  asyncRender(graphId, src, sign, $engine, props) {
-    $engine.asyncRenderHandler.add(graphId);
-    this.mermaidAPIRefs
-      .render(graphId, src, this.mermaidCanvas)
-      .then(({ svg: svgCode }) => {
-        // 渲染完成后，替换为渲染结果
-        const html = this.processSvgCode(svgCode, graphId);
-        this.lastRenderedCode = html;
-        this.handleAsyncRenderDone(graphId, sign, $engine, props, html);
-      })
-      .catch(() => {
-        /**
-         * 如果开启了流式渲染，当前有上次渲染结果时，使用上次渲染结果
-         * 这里有赌的成分,流式输出场景，只有最后一个mermaid代码块在流式输出，随着最后一个mermaid流式输出，mermaid的渲染有概率会失败
-         *  这里赌的是：
-         *    1、只有一个mermaid代码块需要渲染
-         *    2、纯预览模式，且流式输出场景，所有mermaid都正常输出
-         */
-        if (
-          $engine.$cherry.options.engine.global.flowSessionContext &&
-          !!this.lastRenderedCode &&
-          $engine.$cherry.status.editor === 'hide'
-        ) {
-          this.needReturnLastRenderedCode = true;
-        } else {
-          // 渲染失败后，回退到源码
-          this.needReturnLastRenderedCode = false;
-          const html = props.fallback();
-          this.handleAsyncRenderDone(graphId, sign, $engine, props, html);
+  async renderResolved(graphId, src, sign, $engine, props, version) {
+    const api = this.mermaidAPIRefs;
+    if (!api) throw new Error('Mermaid is unavailable.');
+    await enqueueMermaidRender(api, async () => {
+      if (!this.isCurrentRender($engine, version)) return;
+      this.initializeMermaid();
+      const svg2img = props.mermaidConfig?.svg2img ?? false;
+      let svgCode;
+      if (this.isAsyncRenderVersion()) {
+        const canvas = this.createAsyncRenderCanvas($engine);
+        try {
+          const result = await api.render(graphId, src, canvas);
+          svgCode = result.svg;
+        } finally {
+          this.removeAsyncRenderCanvas($engine, canvas);
         }
+      } else {
+        const canvas = this.mountMermaidCanvas($engine);
+        svgCode = await new Promise((resolve, reject) => {
+          try {
+            api.render(graphId, src, (svg) => resolve(svg), canvas);
+          } catch (error) {
+            reject(error);
+          }
+        });
+      }
+      if (!this.isCurrentRender($engine, version)) return;
+      this.handleAsyncRenderDone(
+        graphId,
+        sign,
+        $engine,
+        props,
+        this.processSvgCode(svgCode, graphId, svg2img),
+        version,
+      );
+    });
+  }
+
+  ensureMermaidLoaded(src) {
+    if (this.mermaidAPIRefs) return Promise.resolve(true);
+    const normalizedSrc = normalizeMermaidScriptSrc(src);
+    if (!normalizedSrc || this.hasExplicitMermaid) return null;
+    if (this.mermaidLoadPromises.has(normalizedSrc)) return this.mermaidLoadPromises.get(normalizedSrc);
+    const loading = loadMermaidScript(normalizedSrc)
+      .then(() => {
+        if (!this.tryResolveBrowserMermaid()) {
+          resetMermaidScript(normalizedSrc);
+          throw new Error('Loaded Mermaid script did not expose an API.');
+        }
+        return true;
+      })
+      .catch(() => false)
+      .finally(() => {
+        this.mermaidLoadPromises.delete(normalizedSrc);
       });
-    if (this.needReturnLastRenderedCode) {
-      return this.lastRenderedCode;
+    this.mermaidLoadPromises.set(normalizedSrc, loading);
+    return loading;
+  }
+
+  asyncRender(graphId, src, sign, $engine, props) {
+    const version = $engine.asyncRenderHandler.renderVersion;
+    const fallback = () => props.fallback();
+    const finishFallback = () => this.handleAsyncRenderDone(graphId, sign, $engine, props, fallback(), version);
+    $engine.asyncRenderHandler.add(graphId);
+    const render = () => this.renderResolved(graphId, src, sign, $engine, props, version).catch(finishFallback);
+    if (this.mermaidAPIRefs) {
+      render();
+    } else {
+      const loading = this.ensureMermaidLoaded(props.mermaidConfig?.src || this.options.src);
+      if (loading) loading.then((available) => (available ? render() : finishFallback()));
+      else finishFallback();
     }
-    // 先渲染源码
-    return props.fallback();
+    return fallback();
+  }
+
+  syncRender(graphId, src, $engine, props) {
+    this.initializeMermaid();
+    const canvas = this.mountMermaidCanvas($engine);
+    let svgCode;
+    try {
+      this.mermaidAPIRefs.render(
+        graphId,
+        src,
+        (svg) => {
+          svgCode = svg;
+        },
+        canvas,
+      );
+      if (!svgCode) return props.fallback();
+      return this.processSvgCode(svgCode, graphId, props.mermaidConfig?.svg2img ?? false);
+    } catch (_) {
+      return props.fallback();
+    }
   }
 
   render(src, sign, $engine, props = {}) {
-    let $sign = sign;
-    if (!$sign) {
-      $sign = Math.round(Math.random() * 100000000);
+    const $sign = sign || Math.round(Math.random() * 100000000);
+    const graphId = `mermaid-${$sign}-${nextMermaidRenderId('graph')}`;
+    // Legacy Mermaid invokes its callback synchronously. Preserve the public
+    // custom-renderer contract for explicitly available v9 APIs; no async work
+    // can interleave during this JavaScript call.
+    if (this.mermaidAPIRefs && !this.isAsyncRenderVersion()) {
+      return this.syncRender(graphId, src, $engine, props);
     }
-    this.mountMermaidCanvas($engine);
-    // 多实例的情况下相同的内容ID相同会导致mermaid渲染异常
-    // 需要通过添加时间戳使得多次渲染相同内容的图像ID唯一
-    // 图像渲染节流在CodeBlock Hook内部控制
-    const graphId = `mermaid-${sign}-${new Date().getTime()}`;
-    this.svg2img = props.mermaidConfig?.svg2img ?? false;
-    return this.isAsyncRenderVersion()
-      ? this.asyncRender(graphId, src, $sign, $engine, props)
-      : this.syncRender(graphId, src, $sign, $engine);
+    return this.asyncRender(graphId, src, $sign, $engine, props);
   }
 }

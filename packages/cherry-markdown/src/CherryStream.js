@@ -303,6 +303,7 @@ export default class CherryStream extends CherryStatic {
   }
 
   destroy() {
+    this.engine?.destroy();
     if (this.noMountEl) {
       this.cherryDom.remove();
     } else {
