@@ -32,6 +32,20 @@ function requireArchiveFile(files, path) {
   return content;
 }
 
+async function listRuntimeJavaScript(directory, relativeDirectory = '') {
+  const entries = await readdir(directory, { withFileTypes: true });
+  const files = [];
+  for (const entry of entries) {
+    const relativePath = relativeDirectory ? `${relativeDirectory}/${entry.name}` : entry.name;
+    if (entry.isDirectory()) {
+      files.push(...(await listRuntimeJavaScript(join(directory, entry.name), relativePath)));
+    } else if (entry.isFile() && entry.name.endsWith('.js')) {
+      files.push(relativePath);
+    }
+  }
+  return files.sort();
+}
+
 async function main() {
   if (vscePackage.version !== expectedVsceVersion) {
     throw new Error(`VSIX verifier requires @vscode/vsce@${expectedVsceVersion}, found ${vscePackage.version}`);
@@ -70,6 +84,35 @@ async function main() {
     'extension/web-resources/dist/.super-doc-release.json',
   ]) {
     requireArchiveFile(files, requiredPath);
+  }
+
+  const sourceExtensionDistDirectory = join(source, 'dist');
+  const expectedExtensionRuntimeJavaScript = await listRuntimeJavaScript(sourceExtensionDistDirectory);
+  if (!expectedExtensionRuntimeJavaScript.includes('extension.js')) {
+    throw new Error('Extension Host runtime must include dist/extension.js');
+  }
+  const extensionDistPrefix = 'extension/dist/';
+  const archivedExtensionDistEntries = [...files.keys()]
+    .filter((path) => path.startsWith(extensionDistPrefix))
+    .map((path) => path.slice(extensionDistPrefix.length))
+    .sort();
+  const unexpectedExtensionDistEntries = archivedExtensionDistEntries.filter((path) => !path.endsWith('.js'));
+  if (unexpectedExtensionDistEntries.length > 0) {
+    throw new Error(
+      `VSIX Extension Host dist must not contain non-runtime or source-map files: ${unexpectedExtensionDistEntries.join(', ')}`,
+    );
+  }
+  if (JSON.stringify(archivedExtensionDistEntries) !== JSON.stringify(expectedExtensionRuntimeJavaScript)) {
+    throw new Error(
+      `VSIX Extension Host runtime JavaScript set differs from the Rspack output: ${archivedExtensionDistEntries.join(', ')}`,
+    );
+  }
+  for (const asset of expectedExtensionRuntimeJavaScript) {
+    const expected = await readFile(join(sourceExtensionDistDirectory, asset));
+    const archived = requireArchiveFile(files, `${extensionDistPrefix}${asset}`);
+    if (!archived.equals(expected)) {
+      throw new Error(`VSIX Extension Host runtime JavaScript does not byte-match the Rspack output: ${asset}`);
+    }
   }
 
   const sourceDistDirectory = join(source, 'web-resources', 'dist');
