@@ -2,11 +2,14 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 import { getTheme, getUsageMode, migrateImageUploadMode, migrateTheme, THEME_STATE_KEY } from './config';
 import { uploadFileHandler } from './handler/uploadFile';
-import { parseWebviewMessage, type EditorState, type ExtensionToWebviewMessage } from './protocol';
+import {
+  MAX_PNG_EXPORT_BYTES,
+  parseWebviewMessage,
+  type EditorState,
+  type ExtensionToWebviewMessage,
+} from './protocol';
 import { calculateTextReplacement } from './textEdit';
 import { getWebviewContent } from './webview';
-
-const MAX_PNG_BYTES = 50 * 1024 * 1024;
 
 function sameUri(left: vscode.Uri | undefined, right: vscode.Uri | undefined): boolean {
   return left?.toString() === right?.toString();
@@ -353,7 +356,7 @@ class CherryMarkdownPreview implements vscode.Disposable {
       return void vscode.window.showErrorMessage(vscode.l10n.t('Unable to export the preview as PNG.'));
     const base64 = data.slice('data:image/png;base64,'.length);
     if (
-      Math.floor((base64.length * 3) / 4) > MAX_PNG_BYTES ||
+      Math.floor((base64.length * 3) / 4) > MAX_PNG_EXPORT_BYTES ||
       base64.length % 4 !== 0 ||
       !/^[A-Za-z\d+/]*={0,2}$/.test(base64)
     ) {

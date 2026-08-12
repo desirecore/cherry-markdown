@@ -11,3 +11,4 @@ vsc-extension-quickstart.md
 **/*.ts
 web-resources/scripts/index.js
 web-resources/scripts/editor-state.js
+web-resources/scripts/export-limits.js

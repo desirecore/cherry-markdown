@@ -26,5 +26,6 @@ describe('VS Code package contract', () => {
     expect(vsixIgnore).not.toContain('global-vars.js');
     expect(vsixIgnore).toContain('web-resources/scripts/index.js');
     expect(vsixIgnore).toContain('web-resources/scripts/editor-state.js');
+    expect(vsixIgnore).toContain('web-resources/scripts/export-limits.js');
   });
 });

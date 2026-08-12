@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseWebviewMessage } from '../src/protocol';
+import { MAX_PNG_EXPORT_BYTES, MAX_PNG_MESSAGE_LENGTH, parseWebviewMessage } from '../src/protocol';
 
 describe('VS Code Webview protocol', () => {
   it('accepts a bounded, versioned edit request', () => {
@@ -25,6 +25,8 @@ describe('VS Code Webview protocol', () => {
   });
 
   it('only accepts bounded PNG export payloads', () => {
+    expect(MAX_PNG_EXPORT_BYTES).toBe(10 * 1024 * 1024);
+    expect(MAX_PNG_MESSAGE_LENGTH).toBe(Math.ceil((MAX_PNG_EXPORT_BYTES * 4) / 3) + 'data:image/png;base64,'.length);
     expect(parseWebviewMessage({ type: 'export-png', data: 'data:image/png;base64,AAAA' })).toEqual({
       type: 'export-png',
       data: 'data:image/png;base64,AAAA',

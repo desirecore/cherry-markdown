@@ -32,7 +32,8 @@ export type WebviewToExtensionMessage =
 const themes: CherryTheme[] = ['default', 'dark', 'gray', 'abyss', 'green', 'red', 'violet', 'blue'];
 const MAX_TEXT_LENGTH = 8 * 1024 * 1024;
 const MAX_PATH_LENGTH = 32_768;
-const MAX_PNG_MESSAGE_LENGTH = Math.ceil((50 * 1024 * 1024 * 4) / 3) + 'data:image/png;base64,'.length;
+export const MAX_PNG_EXPORT_BYTES = 10 * 1024 * 1024;
+export const MAX_PNG_MESSAGE_LENGTH = Math.ceil((MAX_PNG_EXPORT_BYTES * 4) / 3) + 'data:image/png;base64,'.length;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;

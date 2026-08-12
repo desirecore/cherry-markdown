@@ -37,9 +37,11 @@ const themeAliases: Record<string, CherryTheme> = {
   green: 'green',
   Green: 'green',
   绿色: 'green',
+  Зелёная: 'green',
   red: 'red',
   Red: 'red',
   红色: 'red',
+  Красная: 'red',
   violet: 'violet',
   Violet: 'violet',
   淡雅: 'violet',
@@ -64,7 +66,12 @@ const imageUploadModeAliases: Record<string, ImageUploadMode> = {
   远程: 'remote',
   custom: 'remote',
   CustomUploader: 'remote',
+  自定义上传器: 'remote',
+  'Пользовательский загрузчик': 'remote',
   PicGoServer: 'remote',
+  'PicGo Server': 'remote',
+  'PicGo 服务器': 'remote',
+  PicGo服务器: 'remote',
 };
 
 const legacyPicGoValues = new Set(['PicGoServer', 'PicGo Server', 'PicGo 服务器', 'PicGo服务器']);
@@ -73,15 +80,19 @@ const backfillAliases: Record<string, BackfillImageProp> = {
   isBorder: 'isBorder',
   Border: 'isBorder',
   边框: 'isBorder',
+  Граница: 'isBorder',
   isNotBorder: 'isNotBorder',
   'No border': 'isNotBorder',
   无边框: 'isNotBorder',
+  'Без границы': 'isNotBorder',
   isShadow: 'isShadow',
   Shadow: 'isShadow',
   阴影: 'isShadow',
+  Тень: 'isShadow',
   isRadius: 'isRadius',
   'Rounded corners': 'isRadius',
   圆角: 'isRadius',
+  'Скруглённые углы': 'isRadius',
 };
 
 function configuration(resource?: vscode.Uri): vscode.WorkspaceConfiguration {
