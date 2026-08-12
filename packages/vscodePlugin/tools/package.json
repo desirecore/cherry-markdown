@@ -1,0 +1,12 @@
+{
+  "name": "cherry-markdown-vscode-plugin-tools",
+  "private": true,
+  "description": "Locked VSIX packaging and Extension Host tooling; intentionally isolated from the Yarn workspace lock.",
+  "engines": {
+    "node": ">=20.18.1"
+  },
+  "dependencies": {
+    "@vscode/test-electron": "2.5.2",
+    "@vscode/vsce": "2.22.0"
+  }
+}

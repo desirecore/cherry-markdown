@@ -1,5 +1,11 @@
 # Change Log
 
+## 0.1.3
+
+### Patch Changes
+
+- package the extension from verified `@desirecore/super-doc@0.2.15` runtime assets with a reproducible VSIX verification and Extension Host smoke workflow
+
 ## 0.1.2
 
 ### Patch Changes

@@ -2,6 +2,8 @@
 out/**
 node_modules/**
 src/**
+test/**
+tools/**
 .gitignore
 .yarnrc
 vsc-extension-quickstart.md

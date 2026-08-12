@@ -1,0 +1,84 @@
+name: VSIX Delivery
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'packages/vscodePlugin/**'
+      - 'scripts/prepare-vscode-plugin-resources.mjs'
+      - 'scripts/stage-vscode-plugin-marketplace.mjs'
+      - 'scripts/verify-vscode-vsix.mjs'
+      - 'scripts/run-vscode-extension-host-smoke.mjs'
+      - '.github/workflows/vscode-plugin-vsix.yml'
+      - '.github/workflows/publish-vscode-plugin.yml'
+      - 'package.json'
+      - 'yarn.lock'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: vscode-plugin-vsix-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  package-vsix:
+    name: Package, verify, and smoke-test VSIX
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Use Node.js 20.20.0
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.20.0'
+          cache: yarn
+
+      - name: Install locked tooling only
+        run: yarn --frozen-lockfile --ignore-scripts
+
+      - name: Install locked VSIX tooling only
+        run: npm ci --prefix packages/vscodePlugin/tools --ignore-scripts
+
+      - name: Prepare published SuperDoc assets and compile the extension only
+        run: yarn build:vscodePlugin
+
+      - name: Stage the Marketplace manifest
+        run: |
+          stage_dir="$RUNNER_TEMP/vscode-plugin-marketplace-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          archive="$RUNNER_TEMP/cherry-markdown-${GITHUB_SHA}.vsix"
+          node scripts/stage-vscode-plugin-marketplace.mjs --out "$stage_dir"
+          echo "VSIX_STAGE_DIR=$stage_dir" >> "$GITHUB_ENV"
+          echo "VSIX_ARCHIVE=$archive" >> "$GITHUB_ENV"
+
+      - name: Package the staged VSIX with locked local vsce
+        run: |
+          cd "$VSIX_STAGE_DIR"
+          "$GITHUB_WORKSPACE/packages/vscodePlugin/tools/node_modules/.bin/vsce" package --no-dependencies --no-yarn --out "$VSIX_ARCHIVE"
+
+      - name: Verify the archive before upload
+        run: node scripts/verify-vscode-vsix.mjs --archive "$VSIX_ARCHIVE"
+
+      - name: Upload the exact verified VSIX
+        uses: actions/upload-artifact@v4
+        with:
+          name: cherry-markdown-vsix-${{ github.sha }}
+          path: ${{ env.VSIX_ARCHIVE }}
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Unpack the verified archive for the Extension Host
+        run: |
+          extension_dir="$RUNNER_TEMP/vsix-extension-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          mkdir "$extension_dir"
+          unzip -q "$VSIX_ARCHIVE" -d "$extension_dir"
+          echo "VSIX_EXTENSION_DIR=$extension_dir/extension" >> "$GITHUB_ENV"
+
+      - name: Install and activate the packaged extension once
+        env:
+          VSCODE_TEST_CACHE: ${{ runner.temp }}/vscode-extension-host-cache
+        run: |
+          timeout 8m xvfb-run -a node scripts/run-vscode-extension-host-smoke.mjs \
+            --archive "$VSIX_ARCHIVE" \
+            --extension "$VSIX_EXTENSION_DIR"
