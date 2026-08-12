@@ -3,6 +3,8 @@ name: pkg-pr-new
 on:
   pull_request:
     branches: [dev, main]
+    paths:
+      - 'packages/cherry-markdown/**'
 
 jobs:
   pkg-pr-new:

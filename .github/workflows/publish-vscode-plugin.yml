@@ -1,0 +1,71 @@
+name: Publish Verified VSIX
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_publish:
+        description: 'Publish the freshly verified VSIX to the configured Marketplace publisher'
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish-vscode-plugin-marketplace
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: ${{ github.repository == 'desirecore/super-doc' && inputs.confirm_publish }}
+    environment: vscode-marketplace
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Use Node.js 20.20.0
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.20.0'
+          cache: yarn
+
+      - name: Require the explicit Marketplace credential
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+        run: test -n "$VSCE_PAT"
+
+      - name: Install locked tooling only
+        run: yarn --frozen-lockfile --ignore-scripts
+
+      - name: Install locked VSIX tooling only
+        run: npm ci --prefix packages/vscodePlugin/tools --ignore-scripts
+
+      - name: Prepare published SuperDoc assets and compile the extension only
+        run: yarn build:vscodePlugin
+
+      - name: Stage and package a single VSIX
+        run: |
+          stage_dir="$RUNNER_TEMP/vscode-plugin-marketplace-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          archive="$RUNNER_TEMP/cherry-markdown-${GITHUB_SHA}.vsix"
+          node scripts/stage-vscode-plugin-marketplace.mjs --out "$stage_dir"
+          cd "$stage_dir"
+          "$GITHUB_WORKSPACE/packages/vscodePlugin/tools/node_modules/.bin/vsce" package --no-dependencies --no-yarn --out "$archive"
+          echo "VSIX_ARCHIVE=$archive" >> "$GITHUB_ENV"
+
+      - name: Verify the exact archive to be published
+        run: node scripts/verify-vscode-vsix.mjs --archive "$VSIX_ARCHIVE"
+
+      - name: Upload the verified release archive
+        uses: actions/upload-artifact@v4
+        with:
+          name: cherry-markdown-vsix-${{ github.sha }}
+          path: ${{ env.VSIX_ARCHIVE }}
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Publish the verified archive only
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+        run: ./packages/vscodePlugin/tools/node_modules/.bin/vsce publish --packagePath "$VSIX_ARCHIVE" --pat "$VSCE_PAT"

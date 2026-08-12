@@ -3,6 +3,9 @@ name: Preview Build
 on:
   pull_request:
     types: [opened, synchronize, reopened]
+    paths:
+      - 'packages/cherry-markdown/**'
+      - 'examples/**'
 
 jobs:
   build:
