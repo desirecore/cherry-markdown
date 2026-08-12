@@ -72,11 +72,87 @@ async function main() {
     requireArchiveFile(files, requiredPath);
   }
 
-  for (const asset of ['super-doc.js', 'super-doc.min.css', '.super-doc-release.json']) {
+  const sourceDistDirectory = join(source, 'web-resources', 'dist');
+  const sourceDistEntries = await readdir(sourceDistDirectory, { withFileTypes: true });
+  const expectedRuntimeJavaScript = sourceDistEntries
+    .filter((entry) => entry.isFile() && entry.name.endsWith('.js'))
+    .map((entry) => entry.name)
+    .sort();
+  if (!expectedRuntimeJavaScript.includes('index.js') || !expectedRuntimeJavaScript.includes('super-doc.js')) {
+    throw new Error('Prepared VSIX runtime JavaScript must include index.js and super-doc.js');
+  }
+  const archivedRuntimeJavaScript = [...files.keys()]
+    .filter((path) => {
+      const prefix = 'extension/web-resources/dist/';
+      const relativePath = path.slice(prefix.length);
+      return path.startsWith(prefix) && !relativePath.includes('/') && relativePath.endsWith('.js');
+    })
+    .map((path) => path.slice('extension/web-resources/dist/'.length))
+    .sort();
+  if (JSON.stringify(archivedRuntimeJavaScript) !== JSON.stringify(expectedRuntimeJavaScript)) {
+    throw new Error(
+      `VSIX runtime JavaScript set differs from the prepared assets: ${archivedRuntimeJavaScript.join(', ')}`,
+    );
+  }
+  for (const asset of expectedRuntimeJavaScript) {
+    const expected = await readFile(join(sourceDistDirectory, asset));
+    const archived = requireArchiveFile(files, `extension/web-resources/dist/${asset}`);
+    if (!archived.equals(expected)) {
+      throw new Error(`VSIX runtime JavaScript does not byte-match the prepared asset: ${asset}`);
+    }
+  }
+
+  for (const asset of ['super-doc.min.css', '.super-doc-release.json']) {
     const expected = await readFile(join(source, 'web-resources', 'dist', asset));
     const archived = requireArchiveFile(files, `extension/web-resources/dist/${asset}`);
     if (!archived.equals(expected)) {
       throw new Error(`VSIX asset does not byte-match the reviewed prepared asset: ${asset}`);
+    }
+  }
+
+  const staticRuntimeAssets = [
+    'favicon.ico',
+    'web-resources/index.css',
+    'web-resources/scripts/index.css',
+    'web-resources/scripts/pinyin/pinyin_dist.js',
+  ];
+  const sourceRootEntries = await readdir(source, { withFileTypes: true });
+  const packageNlsFiles = sourceRootEntries
+    .filter((entry) => entry.isFile() && /^package\.nls(?:\..+)?\.json$/.test(entry.name))
+    .map((entry) => entry.name)
+    .sort();
+  if (packageNlsFiles.length === 0) {
+    throw new Error('The source extension must contain package.nls localization files');
+  }
+  for (const asset of [...staticRuntimeAssets, ...packageNlsFiles]) {
+    const expected = await readFile(join(source, asset));
+    const archived = requireArchiveFile(files, `extension/${asset}`);
+    if (!archived.equals(expected)) {
+      throw new Error(`VSIX static runtime asset does not byte-match the source: ${asset}`);
+    }
+  }
+
+  if (sourcePackage.l10n !== './l10n') {
+    throw new Error('The VSIX verifier expects the extension manifest l10n directory to remain ./l10n');
+  }
+  const sourceL10nDirectory = join(source, 'l10n');
+  const sourceL10nEntries = await readdir(sourceL10nDirectory, { withFileTypes: true });
+  if (sourceL10nEntries.length === 0 || sourceL10nEntries.some((entry) => !entry.isFile())) {
+    throw new Error('Extension l10n resources must be a non-empty flat directory');
+  }
+  const expectedL10nFiles = sourceL10nEntries.map((entry) => entry.name).sort();
+  const archivedL10nFiles = [...files.keys()]
+    .filter((path) => path.startsWith('extension/l10n/'))
+    .map((path) => path.slice('extension/l10n/'.length))
+    .sort();
+  if (JSON.stringify(archivedL10nFiles) !== JSON.stringify(expectedL10nFiles)) {
+    throw new Error(`VSIX l10n file set differs from source: ${archivedL10nFiles.join(', ')}`);
+  }
+  for (const file of expectedL10nFiles) {
+    const expected = await readFile(join(sourceL10nDirectory, file));
+    const archived = requireArchiveFile(files, `extension/l10n/${file}`);
+    if (!archived.equals(expected)) {
+      throw new Error(`VSIX l10n resource does not byte-match the source: ${file}`);
     }
   }
 
