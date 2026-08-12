@@ -6,8 +6,6 @@ name: Test
 on:
   pull_request:
     branches: [main, dev]
-    paths:
-      - 'packages/cherry-markdown/**'
 
 jobs:
   test:

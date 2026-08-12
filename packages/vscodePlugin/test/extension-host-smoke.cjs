@@ -23,4 +23,11 @@ exports.run = async () => {
   if (!commands.includes('cherrymarkdown.preview')) {
     throw new Error('The packaged Cherry Markdown preview command was not registered after activation');
   }
+
+  const document = await vscode.workspace.openTextDocument({
+    language: 'markdown',
+    content: '# VSIX Extension Host smoke',
+  });
+  await vscode.window.showTextDocument(document);
+  await vscode.commands.executeCommand('cherrymarkdown.preview');
 };

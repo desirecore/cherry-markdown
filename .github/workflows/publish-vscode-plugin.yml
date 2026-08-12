@@ -18,7 +18,7 @@ concurrency:
 
 jobs:
   publish:
-    if: ${{ github.repository == 'desirecore/super-doc' && inputs.confirm_publish }}
+    if: ${{ github.repository == 'desirecore/super-doc' && github.ref == 'refs/heads/main' && inputs.confirm_publish }}
     environment: vscode-marketplace
     runs-on: ubuntu-latest
     timeout-minutes: 20
