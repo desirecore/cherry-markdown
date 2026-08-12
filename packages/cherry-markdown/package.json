@@ -45,6 +45,7 @@
     "check-bundle": "es-check es5 dist/super-doc.js",
     "test": "vitest",
     "test:update": "vitest -u",
+    "test:types:engine-core": "node test/types/verify-engine-core-consumer.mjs",
     "lint": "cd ../.. && npx prettier --check packages/cherry-markdown/src/**/*.js && npx eslint --ignore-path .eslintignore packages/cherry-markdown/src/**/*.js",
     "lint:fix": "cd ../.. && npx prettier --write packages/cherry-markdown/src/**/*.js && npx eslint --ignore-path .eslintignore packages/cherry-markdown/src/**/*.js --fix",
     "examples": "serve -p 3000 ."

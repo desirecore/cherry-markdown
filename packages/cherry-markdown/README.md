@@ -43,7 +43,7 @@ A lightweight Engine + Previewer combination designed for AI chat scenarios. Shi
 
 ## Introduction
 
-SuperDoc is a Javascript Markdown editor. It has the advantages such as out-of-the-box, lightweight and easy to extend. It can run in browser or server (with NodeJs).
+SuperDoc is a JavaScript Markdown editor for browser and browser-like Webview runtimes. It is out-of-the-box, lightweight, and easy to extend.
 
 ### Document
 
@@ -175,13 +175,7 @@ const cherryInstance = new Cherry({
 });
 ```
 
-### Node
-
-```javascript
-const { default: CherryEngine } = require('@desirecore/super-doc/dist/super-doc.engine.core.common');
-const cherryEngineInstance = new CherryEngine();
-const htmlContent = cherryEngineInstance.makeHtml('# welcome to SuperDoc!');
-```
+The published editor and engine entries require browser DOM APIs. Raw Node.js/SSR (including CommonJS `require`) is not a supported runtime.
 
 ## Lite Version
 
@@ -198,10 +192,10 @@ const cherryInstance = new Cherry({
 });
 ```
 
-### Engine Mode (Just Syntax Compile)
+### Engine Mode (browser bundler; syntax rendering only)
 
 ```javascript
-import CherryEngine from '@desirecore/super-doc/dist/super-doc.engine.core';
+import CherryEngine from '@desirecore/super-doc/dist/super-doc.engine.core.esm.js';
 const cherryEngineInstance = new CherryEngine();
 const htmlContent = cherryEngineInstance.makeHtml('# welcome to SuperDoc!');
 

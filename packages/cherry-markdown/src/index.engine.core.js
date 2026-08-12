@@ -62,8 +62,14 @@ class CherryEngine extends CherryStatic {
 export { SyntaxHookBase, MenuHookBase };
 
 /**
- * @typedef {typeof CherryStatic & (new (options: Partial<import('~types/cherry').CherryOptions>) => Engine)}
+ * The runtime constructor returns an Engine, while the exported constructor
+ * also retains CherryEngine's static API. Put the Engine signature first so
+ * TypeScript uses it for `new CherryEngineExport(...)` in generated d.ts files.
+ *
+ * @typedef {(new (options: Partial<import('~types/cherry').CherryOptions>) => Engine) & typeof CherryEngine} CherryEngineConstructor
  */
-const CherryEngineExport = CherryEngine;
+
+/** @type {CherryEngineConstructor} */
+const CherryEngineExport = /** @type {CherryEngineConstructor} */ (CherryEngine);
 
 export default CherryEngineExport;
