@@ -1,6 +1,7 @@
 // Heavy modules are loaded on demand to reduce initial bundle size
 // MathJax and html-to-image are dynamically imported when needed
 import { shouldPreserveLocalEdit } from './editor-state';
+import { isPngExportWithinLimit } from './export-limits';
 
 // import md5 from 'md5';
 
@@ -87,6 +88,7 @@ const customMenuExport = Cherry.createMenuHook(webviewLabels.save, {
           const toPng = mod.toPng || (mod.default && mod.default.toPng);
           if (!toPng) throw new Error('html-to-image unavailable');
           const dataUrl = await toPng(cherrymarkdown);
+          if (!isPngExportWithinLimit(dataUrl)) throw new Error('PNG export exceeds the 10 MB limit');
           vscode.postMessage({ type: 'export-png', data: dataUrl });
         } catch (error) {
           console.error('toPng error:', error);

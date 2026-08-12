@@ -3,7 +3,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const host = vi.hoisted(() => ({
   mode: 'data',
   customUploader: undefined as unknown,
+  fileSize: 3,
   selectFile: vi.fn(async () => [{ scheme: 'file', path: '/selected/image.png', fsPath: '/selected/image.png' }]),
+  readFile: vi.fn(async () => new Uint8Array([1, 2, 3])),
   uriFile: vi.fn((value: string) => ({ path: value })),
   post: vi.fn(),
 }));
@@ -17,8 +19,8 @@ vi.mock('vscode', () => ({
       inspect: (key: string) => (key === 'ImageUploadMode' ? { globalValue: host.mode } : undefined),
     }),
     fs: {
-      stat: async () => ({ type: 1, size: 3 }),
-      readFile: async () => new Uint8Array([1, 2, 3]),
+      stat: async () => ({ type: 1, size: host.fileSize }),
+      readFile: host.readFile,
     },
   },
   window: { showOpenDialog: host.selectFile },
@@ -29,13 +31,15 @@ vi.mock('vscode', () => ({
 
 vi.mock('axios', () => ({ default: { post: host.post } }));
 
-import { parseUploadResponse, uploadFileHandler } from '../src/handler/uploadFile';
+import { MAX_DATA_UPLOAD_BYTES, parseUploadResponse, uploadFileHandler } from '../src/handler/uploadFile';
 
 describe('upload response validation', () => {
   beforeEach(() => {
     host.mode = 'data';
     host.customUploader = undefined;
+    host.fileSize = 3;
     host.selectFile.mockClear();
+    host.readFile.mockClear();
     host.uriFile.mockClear();
     host.post.mockReset();
   });
@@ -62,6 +66,15 @@ describe('upload response validation', () => {
     expect(host.uriFile).not.toHaveBeenCalled();
     expect(result).toMatchObject({ requestId: 7, documentUri: 'file:///workspace/note.md', name: 'image.png' });
     expect(result.url).toBe('data:image/png;base64,AQID');
+  });
+
+  it('rejects data URL uploads larger than 5 MB before reading the file', async () => {
+    host.fileSize = MAX_DATA_UPLOAD_BYTES + 1;
+    const resource = { toString: () => 'file:///workspace/note.md' };
+    await expect(
+      uploadFileHandler({ requestId: 10, documentUri: 'file:///workspace/note.md' }, resource as never),
+    ).rejects.toThrow('Data URL uploads are limited to 5 MB.');
+    expect(host.readFile).not.toHaveBeenCalled();
   });
 
   it('preserves the legacy PicGo JSON protocol after migration', async () => {

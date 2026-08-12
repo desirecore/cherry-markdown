@@ -5,6 +5,7 @@ import { getAssetDirectory, getBackfillImageProps, getCustomUploader, getImageUp
 import type { UploadFileRequest, UploadFileResult } from '../types/upload';
 
 const MAX_UPLOAD_BYTES = 50 * 1024 * 1024;
+export const MAX_DATA_UPLOAD_BYTES = 5 * 1024 * 1024;
 const MAX_RESPONSE_BYTES = 2 * 1024 * 1024;
 const UPLOAD_TIMEOUT_MS = 30_000;
 const IMAGE_MIME_TYPE = /^image\/(?:avif|bmp|gif|jpe?g|png|webp)$/i;
@@ -117,18 +118,22 @@ async function selectUploadFile(mode: 'workspace' | 'data' | 'remote'): Promise<
   if (!uri) throw new Error('Upload cancelled.');
   const stat = await vscode.workspace.fs.stat(uri);
   if ((stat.type & vscode.FileType.File) === 0) throw new Error('The upload target is not a file.');
-  if (stat.size > MAX_UPLOAD_BYTES) throw new Error('The upload file exceeds the 50 MB limit.');
+  const maxBytes = mode === 'data' ? MAX_DATA_UPLOAD_BYTES : MAX_UPLOAD_BYTES;
+  if (stat.size > maxBytes)
+    throw new Error(
+      mode === 'data' ? 'Data URL uploads are limited to 5 MB.' : 'The upload file exceeds the 50 MB limit.',
+    );
   const name = safeFileName(path.posix.basename(uri.path));
   return { uri, name, type: MIME_BY_EXTENSION[path.posix.extname(name).toLowerCase()] ?? '', size: stat.size };
 }
 
-async function readUploadFile(fileInfo: SelectedUploadFile): Promise<Uint8Array> {
+async function readUploadFile(fileInfo: SelectedUploadFile, maxBytes = MAX_UPLOAD_BYTES): Promise<Uint8Array> {
   const before = await vscode.workspace.fs.stat(fileInfo.uri);
-  if ((before.type & vscode.FileType.File) === 0 || before.size > MAX_UPLOAD_BYTES || before.size !== fileInfo.size) {
+  if ((before.type & vscode.FileType.File) === 0 || before.size > maxBytes || before.size !== fileInfo.size) {
     throw new Error('The upload file changed before it was read.');
   }
   const file = await vscode.workspace.fs.readFile(fileInfo.uri);
-  if (file.length > MAX_UPLOAD_BYTES || file.length !== fileInfo.size)
+  if (file.length > maxBytes || file.length !== fileInfo.size)
     throw new Error('The upload file changed while it was being read.');
   return file;
 }
@@ -254,7 +259,9 @@ export const uploadFileHandler = async (
     case 'data':
       if (!IMAGE_MIME_TYPE.test(selected.type))
         throw new Error('Only raster images are supported without an uploader.');
-      result.url = `data:${selected.type.toLowerCase()};base64,${Buffer.from(await readUploadFile(selected)).toString('base64')}`;
+      result.url = `data:${selected.type.toLowerCase()};base64,${Buffer.from(
+        await readUploadFile(selected, MAX_DATA_UPLOAD_BYTES),
+      ).toString('base64')}`;
       return result;
   }
 };
