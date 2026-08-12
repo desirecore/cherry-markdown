@@ -32,8 +32,9 @@ export type WebviewToExtensionMessage =
 const themes: CherryTheme[] = ['default', 'dark', 'gray', 'abyss', 'green', 'red', 'violet', 'blue'];
 const MAX_TEXT_LENGTH = 8 * 1024 * 1024;
 const MAX_PATH_LENGTH = 32_768;
+export const PNG_DATA_URL_PREFIX = 'data:image/png;base64,';
 export const MAX_PNG_EXPORT_BYTES = 10 * 1024 * 1024;
-export const MAX_PNG_MESSAGE_LENGTH = Math.ceil((MAX_PNG_EXPORT_BYTES * 4) / 3) + 'data:image/png;base64,'.length;
+export const MAX_PNG_MESSAGE_LENGTH = PNG_DATA_URL_PREFIX.length + 4 * Math.ceil(MAX_PNG_EXPORT_BYTES / 3);
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
@@ -41,6 +42,12 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function isFiniteNonNegativeNumber(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value) && value >= 0;
+}
+
+/** Calculate decoded bytes for a base64 string that has already passed syntax validation. */
+export function getBase64DecodedByteLength(value: string): number {
+  const padding = value.endsWith('==') ? 2 : value.endsWith('=') ? 1 : 0;
+  return (value.length / 4) * 3 - padding;
 }
 
 function isUploadFileRequest(value: unknown): value is UploadFileRequest {
@@ -97,9 +104,12 @@ export function parseWebviewMessage(value: unknown): WebviewToExtensionMessage |
         ? { type: value.type, data: value.data }
         : undefined;
     case 'export-png':
-      return typeof value.data === 'string' &&
-        value.data.length <= MAX_PNG_MESSAGE_LENGTH &&
-        (value.data === 'export-fail' || value.data.startsWith('data:image/png;base64,'))
+      return value.data === 'export-fail' ||
+        (typeof value.data === 'string' &&
+          value.data.startsWith(PNG_DATA_URL_PREFIX) &&
+          value.data.length <= MAX_PNG_MESSAGE_LENGTH &&
+          (value.data.length - PNG_DATA_URL_PREFIX.length) % 4 === 0 &&
+          getBase64DecodedByteLength(value.data.slice(PNG_DATA_URL_PREFIX.length)) <= MAX_PNG_EXPORT_BYTES)
         ? { type: value.type, data: value.data }
         : undefined;
     default:
