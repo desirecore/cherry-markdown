@@ -1,0 +1,24 @@
+name: Engine Core Type Contract
+
+permissions:
+  contents: read
+
+on:
+  pull_request:
+  push:
+    branches: [main, dev]
+
+jobs:
+  engine-core-type-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Use Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: yarn
+      - name: Install dependencies
+        run: yarn --frozen-lockfile --ignore-scripts
+      - name: Verify engine-core ESM declaration contract
+        run: yarn workspace @desirecore/super-doc test:types:engine-core

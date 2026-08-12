@@ -45,7 +45,7 @@ SuperDoc (`@desirecore/super-doc`) 是 [Tencent/cherry-markdown](https://github.
 
 ## 介绍
 
-SuperDoc 是一款 Javascript Markdown 编辑器，具有开箱即用、轻量简洁、易于扩展等特点。它可以运行在浏览器或服务端（NodeJs）。
+SuperDoc 是一款运行在浏览器及浏览器式 Webview 环境中的 JavaScript Markdown 编辑器，具有开箱即用、轻量简洁、易于扩展等特点。
 
 ### 文档
 
@@ -178,13 +178,7 @@ const cherryInstance = new Cherry({
 });
 ```
 
-### Node
-
-```javascript
-const { default: CherryEngine } = require('@desirecore/super-doc/dist/super-doc.engine.core.common');
-const cherryEngineInstance = new CherryEngine();
-const htmlContent = cherryEngineInstance.makeHtml('# welcome to SuperDoc!');
-```
+发布的编辑器和引擎入口依赖浏览器 DOM API，不支持原生 Node.js/SSR 运行环境，也不支持以 CommonJS `require` 引入。
 
 ## 轻量版本
 
@@ -201,11 +195,11 @@ const cherryInstance = new Cherry({
 });
 ```
 
-### 引擎模式（语法编译）
+### 引擎模式（浏览器打包器；仅语法编译）
 
 ```javascript
-// 导入 SuperDoc 引擎核心构建包
-import CherryEngine from '@desirecore/super-doc/dist/super-doc.engine.core';
+// 在浏览器打包器中导入 SuperDoc 引擎核心构建包
+import CherryEngine from '@desirecore/super-doc/dist/super-doc.engine.core.esm.js';
 const cherryEngineInstance = new CherryEngine();
 const htmlContent = cherryEngineInstance.makeHtml('# welcome to SuperDoc!');
 
