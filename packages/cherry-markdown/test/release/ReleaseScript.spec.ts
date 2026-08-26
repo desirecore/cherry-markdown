@@ -47,9 +47,11 @@ describe('protected-branch release contract', () => {
     expect(verifier).toContain('import(pathToFileURL');
     expect(verifier).toContain('createRequire');
     expect(verifier).toContain('Cherry.capabilities');
+    expect(verifier).toContain('ribbonHeaderActions');
+    expect(verifier).toContain('Cherry.prototype.setRibbonHeaderActions');
     expect(verifier).toContain('mermaidAPIRefs');
-    expect(verifier).toContain("Cherry.prototype.switchModel");
-    expect(verifier).toContain("Cherry.prototype.refreshPreviewer");
+    expect(verifier).toContain('Cherry.prototype.switchModel');
+    expect(verifier).toContain('Cherry.prototype.refreshPreviewer');
     expect(verifier).toContain('instanceof Promise');
   });
 

@@ -4,4 +4,5 @@ export const SUPER_DOC_CAPABILITIES = Object.freeze({
   asyncModeSwitch: true,
   awaitableRefreshPreviewer: true,
   compactLayout: true,
+  ribbonHeaderActions: true,
 });

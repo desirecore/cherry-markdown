@@ -702,9 +702,13 @@ const defaultConfig = {
           { buttons: ['paste', 'cut', 'copySelection'], large: ['paste'] },
           {
             buttons: [
-              'header', 'bold', 'italic', 'underline',
+              'header',
+              'bold',
+              'italic',
+              'underline',
               { strikethrough: ['strikethrough', 'sub', 'sup', 'ruby'] },
-              'color', 'size',
+              'color',
+              'size',
             ],
             large: ['header'],
           },
@@ -715,7 +719,25 @@ const defaultConfig = {
       },
       {
         name: 'tabInsert',
-        buttons: ['image', 'audio', 'video', '|', 'link', 'hr', 'br', '|', 'code', 'formula', '|', 'toc', 'table', '|', 'footnote', 'pdf', 'word'],
+        buttons: [
+          'image',
+          'audio',
+          'video',
+          '|',
+          'link',
+          'hr',
+          'br',
+          '|',
+          'code',
+          'formula',
+          '|',
+          'toc',
+          'table',
+          '|',
+          'footnote',
+          'pdf',
+          'word',
+        ],
       },
       {
         name: 'tabDraw',
@@ -730,6 +752,8 @@ const defaultConfig = {
         buttons: ['export'],
       },
     ],
+    // Ribbon 标签行右侧的宿主动作。由编辑器本身渲染，嵌入方只提供数据与回调。
+    ribbonHeaderActions: false,
     toolbarRight: [],
     sidebar: false,
     bubble: ['bold', 'italic', 'underline', 'strikethrough', 'sub', 'sup', 'quote', '|', 'size', 'color'], // array or false

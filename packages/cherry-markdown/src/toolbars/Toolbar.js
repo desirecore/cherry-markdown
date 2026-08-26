@@ -119,6 +119,9 @@ export default class Toolbar {
       ) {
         this.hideAllSubMenu();
       }
+      if (!target?.closest('.cherry-ribbon-header-menu')) {
+        this.$closeRibbonHeaderMenus();
+      }
     };
     this.$cherry.$event.on('cleanAllSubMenus', this.$handleCleanAllSubMenus);
     this.$cherry.$event.on('modeCommitted', this.$handleModeCommitted);
@@ -143,6 +146,7 @@ export default class Toolbar {
     this.$handleCleanAllSubMenus = null;
     this.$handleModeCommitted = null;
     this.$handleDocumentClick = null;
+    this.ribbonHeaderActionsDom = null;
   }
 
   /**
@@ -248,6 +252,7 @@ export default class Toolbar {
     this.options.dom.classList.add('cherry-toolbar--ribbon');
 
     const ribbon = createElement('div', 'cherry-ribbon');
+    const ribbonHeader = createElement('div', 'cherry-ribbon-header');
     const tabHeaders = createElement('div', 'cherry-ribbon-tabs');
     const tabPanelsContainer = createElement('div', 'cherry-ribbon-panels');
 
@@ -296,12 +301,144 @@ export default class Toolbar {
       tabPanelsContainer.appendChild(panel);
     });
 
-    ribbon.appendChild(tabHeaders);
+    ribbonHeader.appendChild(tabHeaders);
+    ribbon.appendChild(ribbonHeader);
     ribbon.appendChild(tabPanelsContainer);
 
     const toolbarLeft = createElement('div', 'toolbar-left');
     toolbarLeft.appendChild(ribbon);
     this.options.dom.appendChild(toolbarLeft);
+    this.ribbonHeader = ribbonHeader;
+    this.setRibbonHeaderActions(this.$cherry.options.toolbars.ribbonHeaderActions);
+  }
+
+  /**
+   * 更新 Ribbon 标签行右侧的宿主动作。
+   * @param {import('~types/cherry').CherryRibbonHeaderActions} configuration
+   */
+  setRibbonHeaderActions(configuration) {
+    if (!this.ribbonHeader) return;
+    this.ribbonHeaderActionsDom?.remove();
+    this.ribbonHeaderActionsDom = null;
+    if (!configuration || !Array.isArray(configuration.actions) || configuration.actions.length === 0) return;
+
+    const container = createElement('div', 'cherry-ribbon-header-actions', {
+      role: 'toolbar',
+      'aria-label': configuration.ariaLabel || 'Document actions',
+    });
+    configuration.actions.forEach((action) => this.$renderRibbonHeaderAction(container, action));
+    if (container.childElementCount === 0) return;
+    this.ribbonHeader.appendChild(container);
+    this.ribbonHeaderActionsDom = container;
+  }
+
+  /**
+   * @param {HTMLElement} container
+   * @param {import('~types/cherry').CherryRibbonHeaderAction} action
+   */
+  $renderRibbonHeaderAction(container, action) {
+    if (!action || typeof action !== 'object' || !action.id) return;
+
+    if (action.type === 'segmented') {
+      const group = createElement('div', 'cherry-ribbon-header-segmented', {
+        role: 'group',
+        'aria-label': action.ariaLabel || action.label || action.id,
+      });
+      (action.options || []).forEach((option) => {
+        const selected = option.value === action.value;
+        const button = createElement('button', 'cherry-ribbon-header-action', {
+          type: 'button',
+          title: option.title || option.label,
+          'aria-pressed': String(selected),
+        });
+        button.textContent = option.label;
+        button.disabled = Boolean(option.disabled);
+        button.classList.toggle('cherry-ribbon-header-action--active', selected);
+        button.addEventListener('click', (event) => {
+          if (option.disabled || option.value === action.value) return;
+          this.$invokeRibbonHeaderCallback(action.onChange, option.value, event);
+        });
+        group.appendChild(button);
+      });
+      if (group.childElementCount > 0) container.appendChild(group);
+      return;
+    }
+
+    if (action.type === 'menu') {
+      const menu = createElement('div', 'cherry-ribbon-header-menu');
+      const button = this.$createRibbonHeaderButton(action);
+      button.setAttribute('aria-haspopup', 'menu');
+      button.setAttribute('aria-expanded', 'false');
+      const items = createElement('div', 'cherry-ribbon-header-menu__items', { role: 'menu' });
+      items.hidden = true;
+      (action.items || []).forEach((item) => {
+        if (!item || !item.id) return;
+        const menuItem = createElement('button', 'cherry-ribbon-header-menu__item', {
+          type: 'button',
+          role: 'menuitem',
+          title: item.title || item.label,
+        });
+        menuItem.textContent = item.label;
+        menuItem.disabled = Boolean(item.disabled);
+        menuItem.classList.toggle('cherry-ribbon-header-menu__item--active', Boolean(item.active));
+        menuItem.addEventListener('click', (event) => {
+          event.stopPropagation();
+          this.$closeRibbonHeaderMenus();
+          this.$invokeRibbonHeaderCallback(item.onClick, event);
+        });
+        items.appendChild(menuItem);
+      });
+      button.addEventListener('click', (event) => {
+        event.stopPropagation();
+        const willOpen = items.hidden;
+        this.$closeRibbonHeaderMenus();
+        items.hidden = !willOpen;
+        button.setAttribute('aria-expanded', String(willOpen));
+      });
+      menu.appendChild(button);
+      menu.appendChild(items);
+      container.appendChild(menu);
+      return;
+    }
+
+    const button = this.$createRibbonHeaderButton(action);
+    button.addEventListener('click', (event) => this.$invokeRibbonHeaderCallback(action.onClick, event));
+    container.appendChild(button);
+  }
+
+  /** @param {import('~types/cherry').CherryRibbonHeaderButtonAction | import('~types/cherry').CherryRibbonHeaderMenuAction} action */
+  $createRibbonHeaderButton(action) {
+    const button = createElement('button', 'cherry-ribbon-header-action', {
+      type: 'button',
+      title: action.title || action.label,
+      'aria-label': action.label,
+    });
+    button.textContent = action.label;
+    button.disabled = Boolean(action.disabled);
+    button.classList.toggle('cherry-ribbon-header-action--active', Boolean(action.active));
+    if (typeof action.active === 'boolean' && action.type !== 'menu') {
+      button.setAttribute('aria-pressed', String(action.active));
+    }
+    return button;
+  }
+
+  $closeRibbonHeaderMenus() {
+    this.ribbonHeaderActionsDom?.querySelectorAll('.cherry-ribbon-header-menu').forEach((menu) => {
+      const button = menu.querySelector('[aria-haspopup="menu"]');
+      const items = menu.querySelector('.cherry-ribbon-header-menu__items');
+      if (items instanceof HTMLElement) items.hidden = true;
+      button?.setAttribute('aria-expanded', 'false');
+    });
+  }
+
+  $invokeRibbonHeaderCallback(callback, ...args) {
+    if (typeof callback !== 'function') return;
+    try {
+      const result = callback(...args, this.$cherry);
+      result?.catch?.((error) => Logger.error('[Toolbar] Async Ribbon header action failed:', error));
+    } catch (error) {
+      Logger.error('[Toolbar] Ribbon header action failed:', error);
+    }
   }
 
   /**
