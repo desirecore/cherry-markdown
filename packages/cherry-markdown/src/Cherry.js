@@ -957,6 +957,22 @@ export default class Cherry extends CherryStatic {
   }
 
   /**
+   * 更新 Ribbon 标签行右侧动作。动作 DOM 始终由 SuperDoc 创建和维护，嵌入方无需
+   * 查询编辑器内部节点或挂载外部组件。
+   * @public
+   * @param {import('~types/cherry').CherryRibbonHeaderActions} actions
+   * @returns {Boolean}
+   */
+  setRibbonHeaderActions(actions) {
+    if (actions !== false && (!actions || typeof actions !== 'object' || !Array.isArray(actions.actions))) {
+      return false;
+    }
+    this.options.toolbars.ribbonHeaderActions = actions;
+    this.toolbar?.setRibbonHeaderActions?.(actions);
+    return true;
+  }
+
+  /**
    * @private
    * @returns {Toolbar}
    */

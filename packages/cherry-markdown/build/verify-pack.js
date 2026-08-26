@@ -73,7 +73,14 @@ Object.entries(expectedEntrypoints).forEach(([field, value]) => {
 });
 
 const coreBundle = readPackedText('dist/super-doc.core.js');
-['SUPER_DOC_CAPABILITIES', 'modeCommitted', 'awaitableRefreshPreviewer', 'compactLayout'].forEach((marker) => {
+[
+  'SUPER_DOC_CAPABILITIES',
+  'modeCommitted',
+  'awaitableRefreshPreviewer',
+  'compactLayout',
+  'ribbonHeaderActions',
+  'setRibbonHeaderActions',
+].forEach((marker) => {
   if (!coreBundle.includes(marker)) fail(`core bundle is missing ${marker}`);
 });
 
@@ -83,6 +90,7 @@ const compactCss = readPackedText('dist/super-doc.min.css').replace(/\s/g, '');
   '--editor-content-line-height:24px',
   '--editor-split-padding-inline:var(--spacing-lg)',
   '--wysiwyg-content-padding-inline:clamp(var(--spacing-xl),4vw,var(--spacing-3xl))',
+  '.cherry-ribbon-header-actions{',
 ].forEach((marker) => {
   if (!compactCss.includes(marker)) fail(`packed CSS is missing ${marker}`);
 });
@@ -92,7 +100,13 @@ if (!capabilityTypes.includes('SUPER_DOC_CAPABILITIES') || !capabilityTypes.incl
   fail('packed capability types are incomplete');
 }
 const publicTypes = readPackedText('types/cherry.d.ts');
-['ModeCommittedPayload', 'modeCommitted', 'SuperDocCapabilities'].forEach((marker) => {
+[
+  'ModeCommittedPayload',
+  'modeCommitted',
+  'SuperDocCapabilities',
+  'CherryRibbonHeaderActions',
+  'setRibbonHeaderActions',
+].forEach((marker) => {
   if (!publicTypes.includes(marker)) fail(`packed public types are missing ${marker}`);
 });
 
@@ -134,6 +148,7 @@ try {
     asyncModeSwitch: true,
     awaitableRefreshPreviewer: true,
     compactLayout: true,
+    ribbonHeaderActions: true,
   };
   if (JSON.stringify(publishedModule.SUPER_DOC_CAPABILITIES) !== JSON.stringify(expectedCapabilities)) {
     fail('published ESM named SUPER_DOC_CAPABILITIES export is invalid');
@@ -145,6 +160,9 @@ try {
   }
   if (typeof Cherry.prototype.switchModel !== 'function') fail('published Cherry.switchModel is not public');
   if (typeof Cherry.prototype.refreshPreviewer !== 'function') fail('published Cherry.refreshPreviewer is not public');
+  if (typeof Cherry.prototype.setRibbonHeaderActions !== 'function') {
+    fail('published Cherry.setRibbonHeaderActions is not public');
+  }
   const mermaidRenderer = Cherry.config?.defaults?.engine?.syntax?.codeBlock?.customRenderer?.mermaid;
   if (
     typeof mermaidRenderer?.mermaidAPIRefs?.initialize !== 'function' ||
@@ -171,6 +189,9 @@ try {
   }
   if (typeof CommonJsCherry.prototype.refreshPreviewer !== 'function') {
     fail('published UMD CommonJS Cherry.refreshPreviewer is not public');
+  }
+  if (typeof CommonJsCherry.prototype.setRibbonHeaderActions !== 'function') {
+    fail('published UMD CommonJS Cherry.setRibbonHeaderActions is not public');
   }
 
   const modeHarness = Object.assign(Object.create(Cherry.prototype), {

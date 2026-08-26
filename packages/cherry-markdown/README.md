@@ -59,7 +59,7 @@ SuperDoc is a JavaScript Markdown editor for browser and browser-like Webview ru
 - [WYSIWYG Mode](https://github.com/desirecore/super-doc/wiki/WYSIWYG-%E6%89%80%E8%A7%81%E5%8D%B3%E6%89%80%E5%BE%97%E7%BC%96%E8%BE%91%E6%A8%A1%E5%BC%8F)
 - [Stream Rendering](https://github.com/desirecore/super-doc/wiki/Stream-%E6%B5%81%E5%BC%8F%E6%B8%B2%E6%9F%93%E6%A8%A1%E5%BC%8F)
 
------
+---
 
 ### **Out-of-the-box**
 
@@ -72,6 +72,7 @@ When the syntax that SuperDoc supports can not meet your needs, secondary develo
 ### Incremental / Progressive / Streaming rendering
 
 After enabling streaming rendering, SuperDoc will automatically complete the following syntax elements to avoid exposing Markdown source code, ensuring stable output during the streaming process:
+
 - Headings
 - Bold and italic text
 - Hyperlinks
@@ -115,7 +116,7 @@ After enabling streaming rendering, SuperDoc will automatically complete the fol
 13. Theme switching
 14. Input suggestion (autocomplete)
 15. AI Chat scenario: stream-mode output supported
-16. **WYSIWYG mode: one-click switch between Markdown and rich-text editing** *(SuperDoc)*
+16. **WYSIWYG mode: one-click switch between Markdown and rich-text editing** _(SuperDoc)_
 
 ### Performance Feature
 
@@ -176,6 +177,50 @@ const cherryInstance = new Cherry({
 ```
 
 The published editor and engine entries require browser DOM APIs. Raw Node.js/SSR (including CommonJS `require`) is not a supported runtime.
+
+### Ribbon header actions
+
+When `toolbarTabs` enables the Ribbon layout, applications can place document-level actions on the same row as the Ribbon tabs. SuperDoc owns the rendered DOM; the host provides only serializable labels/state plus callbacks, so no selector lookup, portal, or external DOM mount is required.
+
+```javascript
+const cherryInstance = new Cherry({
+  id: 'markdown-container',
+  toolbars: {
+    toolbarTabs: [
+      { name: 'start', buttons: ['bold', 'italic'] },
+      { name: 'insert', buttons: ['image', 'link'] },
+    ],
+    ribbonHeaderActions: {
+      ariaLabel: 'Document actions',
+      actions: [
+        {
+          type: 'segmented',
+          id: 'review-mode',
+          ariaLabel: 'Review mode',
+          value: 'inline',
+          options: [
+            { value: 'inline', label: 'Inline' },
+            { value: 'compare', label: 'Compare' },
+          ],
+          onChange: (value) => console.log(value),
+        },
+        { id: 'save', label: 'Save', onClick: () => saveDocument() },
+        {
+          type: 'menu',
+          id: 'more',
+          label: 'More',
+          items: [{ id: 'export', label: 'Export', onClick: () => exportDocument() }],
+        },
+      ],
+    },
+  },
+});
+
+// Update active/disabled/menu state without rebuilding the editor.
+cherryInstance.setRibbonHeaderActions(nextRibbonHeaderActions);
+```
+
+The capability can be detected with `Cherry.capabilities.ribbonHeaderActions === true`.
 
 ## Lite Version
 
@@ -242,9 +287,9 @@ cherryInstance.setMarkdown('# welcome to SuperDoc!');
 
 | Build  | File                  | Mermaid | CodeMirror | Use Case          |
 | ------ | --------------------- | ------- | ---------- | ----------------- |
-| Full   | `super-doc.js`        | ✅       | ✅          | General purpose   |
-| Core   | `super-doc.core.js`   | ❌       | ✅          | Without Mermaid   |
-| Stream | `super-doc.stream.js` | ❌       | ❌          | AI Chat streaming |
+| Full   | `super-doc.js`        | ✅      | ✅         | General purpose   |
+| Core   | `super-doc.core.js`   | ❌      | ✅         | Without Mermaid   |
+| Stream | `super-doc.stream.js` | ❌      | ❌         | AI Chat streaming |
 
 > Note: MathJax/KaTeX are external dependencies loaded dynamically via CDN and are not included in any build package.
 

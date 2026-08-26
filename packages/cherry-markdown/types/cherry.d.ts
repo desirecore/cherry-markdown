@@ -63,6 +63,8 @@ export interface Cherry<T extends CherryCustomOptions = CherryCustomOptions> {
   switchModel(model?: EditorMode, showToolbar?: boolean): Promise<boolean>;
   /** 用当前 Markdown 刷新预览 DOM，并等待 mounted hooks 及异步渲染完成；超时返回 false。 */
   refreshPreviewer(): Promise<boolean>;
+  /** 更新 Ribbon 标签行右侧动作。 */
+  setRibbonHeaderActions(actions: CherryRibbonHeaderActions): boolean;
   on(eventName: 'modeCommitted', callback: (payload: ModeCommittedPayload) => void): void;
   off(eventName: 'modeCommitted', callback: (payload: ModeCommittedPayload) => void): void;
 }
@@ -77,6 +79,7 @@ export interface SuperDocCapabilities {
   readonly asyncModeSwitch: true;
   readonly awaitableRefreshPreviewer: true;
   readonly compactLayout: true;
+  readonly ribbonHeaderActions: true;
 }
 
 export type CherryOptions<T extends CherryCustomOptions = CherryCustomOptions> = Partial<_CherryOptions<T>>;
@@ -813,6 +816,57 @@ export interface CherryToolbarGroup {
   showLabel?: boolean | string[];
   styleCard?: boolean;
 }
+export interface CherryRibbonHeaderOption {
+  value: string;
+  label: string;
+  title?: string;
+  disabled?: boolean;
+}
+export interface CherryRibbonHeaderMenuItem {
+  id: string;
+  label: string;
+  title?: string;
+  active?: boolean;
+  disabled?: boolean;
+  onClick?: (event: MouseEvent, cherry: Cherry) => void;
+}
+export interface CherryRibbonHeaderButtonAction {
+  type?: 'button';
+  id: string;
+  label: string;
+  title?: string;
+  active?: boolean;
+  disabled?: boolean;
+  onClick?: (event: MouseEvent, cherry: Cherry) => void;
+}
+export interface CherryRibbonHeaderSegmentedAction {
+  type: 'segmented';
+  id: string;
+  label?: string;
+  ariaLabel?: string;
+  value: string;
+  options: CherryRibbonHeaderOption[];
+  onChange?: (value: string, event: MouseEvent, cherry: Cherry) => void;
+}
+export interface CherryRibbonHeaderMenuAction {
+  type: 'menu';
+  id: string;
+  label: string;
+  title?: string;
+  active?: boolean;
+  disabled?: boolean;
+  items: CherryRibbonHeaderMenuItem[];
+}
+export type CherryRibbonHeaderAction =
+  | CherryRibbonHeaderButtonAction
+  | CherryRibbonHeaderSegmentedAction
+  | CherryRibbonHeaderMenuAction;
+export type CherryRibbonHeaderActions =
+  | {
+      ariaLabel?: string;
+      actions: CherryRibbonHeaderAction[];
+    }
+  | false;
 export interface CherryToolbarsOptions<F extends CherryToolbarsCustomType = CherryToolbarsCustomType> {
   /**
    * @deprecated 不再支持theme的配置，统一在`themeSettings.toolbarTheme`中配置
@@ -840,6 +894,8 @@ export interface CherryToolbarsOptions<F extends CherryToolbarsCustomType = Cher
         groups?: CherryToolbarGroup[];
       }[]
     | false;
+  /** Ribbon 标签行右侧动作；由 SuperDoc 渲染，运行时可用 setRibbonHeaderActions 更新。 */
+  ribbonHeaderActions?: CherryRibbonHeaderActions;
   /** 是否展示悬浮目录 */
   toc?:
     | false

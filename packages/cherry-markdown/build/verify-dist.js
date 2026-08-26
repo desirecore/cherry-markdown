@@ -67,11 +67,19 @@ if (missingFiles.length === 0) {
       'modeCommitted',
       'awaitableRefreshPreviewer',
       'compactLayout',
+      'ribbonHeaderActions',
+      'setRibbonHeaderActions',
     ]);
   });
   requireMarkers('dist/types/capabilities.d.ts', ['SUPER_DOC_CAPABILITIES', 'SuperDocCapabilities']);
   requireMarkers('dist/types/Cherry.d.ts', ['static capabilities', 'SuperDocCapabilities']);
-  requireMarkers('types/cherry.d.ts', ['ModeCommittedPayload', 'modeCommitted', 'SuperDocCapabilities']);
+  requireMarkers('types/cherry.d.ts', [
+    'ModeCommittedPayload',
+    'modeCommitted',
+    'SuperDocCapabilities',
+    'CherryRibbonHeaderActions',
+    'setRibbonHeaderActions',
+  ]);
 
   const compactCss = readFileSync(join(packageDir, 'dist/super-doc.min.css'), 'utf8').replace(/\s/g, '');
   [
@@ -79,6 +87,7 @@ if (missingFiles.length === 0) {
     '--editor-content-line-height:24px',
     '--editor-split-padding-inline:var(--spacing-lg)',
     '--wysiwyg-content-padding-inline:clamp(var(--spacing-xl),4vw,var(--spacing-3xl))',
+    '.cherry-ribbon-header-actions{',
   ].forEach((marker) => {
     if (!compactCss.includes(marker)) {
       contentFailures.push(`dist/super-doc.min.css: missing ${marker}`);
